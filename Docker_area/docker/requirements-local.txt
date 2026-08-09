@@ -1,0 +1,2 @@
+duckdb-engine
+psycopg2-binary
