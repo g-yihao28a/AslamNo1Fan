@@ -1,1 +1,1 @@
- docker compose up -d
+To create .env file locally run: `cp .env.example .env`
