@@ -1,4 +1,0 @@
-pandas
-duckdb
-pathlib
-openpyxl
