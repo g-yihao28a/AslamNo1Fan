@@ -1,6 +1,14 @@
 services:
+  # api_gateway
+  api_gateway:
+    build: ./services/api_gateway
+    ports:
+      - "${GATEWAY_PORT:-8008}:${GATEWAY_PORT:-8008}"
+    env_file:
+        - .env
+  
   etl:
-    build: ./etl
+    build: ./services/etl
     volumes:
       - "./etl:/app"
       - "./Data_Telecommunications_Industry:/data:ro"
@@ -8,7 +16,7 @@ services:
 
   superset:
     build:
-      context: ./docker
+      context: ./services/dashboard
       dockerfile: Dockerfile
     ports:
       - "8088:8088"
