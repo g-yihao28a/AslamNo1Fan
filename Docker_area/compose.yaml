@@ -1,0 +1,25 @@
+services:
+  etl:
+    build: ./etl
+    volumes:
+      - "./etl:/app"
+      - "./Data_Telecommunications_Industry:/data:ro"
+      - "./database:/output"
+
+  superset:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    ports:
+      - "8088:8088"
+    environment:
+      - SUPERSET_SECRET_KEY=RrBNNmBOYXj308RhMcGu2AqNCT1F5Skz_ffQLD2c5EfD0d9dJFpUk-
+      - SUPERSET_ADMIN_USERNAME=admin
+      - SUPERSET_ADMIN_PASSWORD=strongpassword
+      - SUPERSET_ADMIN_EMAIL=soonyoukern@gmail.com
+    volumes:
+      - "./database:/database"
+      - superset_home:/app/superset_home
+
+volumes:
+  superset_home:
