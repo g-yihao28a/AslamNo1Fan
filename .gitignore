@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ML engine trained artifacts (generated at runtime, not committed)
+services/ml_engine/model/*.joblib
+services/ml_engine/model/*.json

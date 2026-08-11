@@ -1,6 +1,12 @@
-FROM apache/superset:latest
+FROM python:3.12-slim
 
-USER root
-COPY requirements-local.txt /app/docker/requirements-local.txt
-RUN uv pip install --python /app/.venv/bin/python --no-cache -r /app/docker/requirements-local.txt
-USER superset
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
