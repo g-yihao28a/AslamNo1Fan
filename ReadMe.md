@@ -12,11 +12,12 @@ Four microservices working together over the real Telco customer churn dataset:
 ## First-time setup
 
 ```bash
+powershell commands
 cp .env.example .env
 docker compose up -d database
-docker compose run --rm db_loader      # loads the real Excel data into Postgres
-docker compose up -d                   # starts ml_engine, dashboard, api_gateway
-curl -X POST http://localhost:8008/api/ml/train   # trains the churn model
+docker compose run --rm db_loader      # for loading the real Excel data into Postgres
+docker compose up -d                   # to start ml_engine, dashboard, api_gateway
+curl.exe -X POST http://localhost:8008/api/ml/train
 ```
 
 Then open:
