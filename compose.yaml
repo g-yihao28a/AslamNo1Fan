@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrespassword}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-5432}:${DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +16,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - backend-net
 
   # One-off job: loads the real Excel data into the database tables.
   # Run explicitly with: docker compose run --rm db_loader
@@ -42,9 +44,8 @@ services:
     build: ./services/ml_engine
     container_name: telco_ml_engine
     ports:
-      - "${ML_ENGINE_PORT:-8010}:8010"
+      - "${ML_ENGINE_PORT:-8010}:${ML_ENGINE_PORT:-8010}"
     environment:
-      ML_ENGINE_PORT: ${ML_ENGINE_PORT:-8010}
       TRAINING_DATA_PATH: /data/Telco_customer_churn.xlsx
     volumes:
       - "./data/telco_data:/data:ro"
@@ -52,15 +53,16 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    networks:
+      - backend-net
 
   # 3. Dashboard — Streamlit, interactive charts + a live "predict churn" panel
   dashboard:
     build:
       context: ./services/dashboard
-      dockerfile: Dockerfile
     container_name: telco_dashboard
     ports:
-      - "${DASHBOARD_PORT:-8501}:8501"
+      - "${DASHBOARD_PORT:-8501}:${DASHBOARD_PORT:-8501}"
     environment:
       DASHBOARD_PORT: ${DASHBOARD_PORT:-8501}
       DB_HOST: database
@@ -68,11 +70,11 @@ services:
       DB_NAME: ${DB_NAME:-telco_churn_db}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
-      API_GATEWAY_URL: http://api_gateway:${GATEWAY_PORT:-8008}
-      ML_ENGINE_URL: http://ml_engine:${ML_ENGINE_PORT:-8010}
     depends_on:
       database:
         condition: service_healthy
+    networks:
+      - backend-net
 
   # 4. API gateway — single entrypoint that proxies to ml_engine / dashboard
   api_gateway:
@@ -82,13 +84,16 @@ services:
       - "${GATEWAY_PORT:-8008}:${GATEWAY_PORT:-8008}"
     env_file:
       - .env
-    environment:
-      ML_ENGINE_URL: http://ml_engine:${ML_ENGINE_PORT:-8010}
-      DASHBOARD_URL: http://dashboard:${DASHBOARD_PORT:-8501}
     depends_on:
       - ml_engine
       - dashboard
+    networks:
+      - backend-net
 
 volumes:
   postgres_data:
   ml_model_data:
+
+networks:
+  backend-net:
+    driver: bridge

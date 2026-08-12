@@ -124,7 +124,6 @@ def predict():
         }
     ), 200
 
-
 if __name__ == "__main__":
     print(f"ML Engine starting on http://localhost:{config.ML_ENGINE_PORT}")
     app.run(host="0.0.0.0", port=config.ML_ENGINE_PORT, debug=True)
