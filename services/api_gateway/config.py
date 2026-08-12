@@ -1,6 +1,13 @@
 import os
 
 from dotenv import load_dotenv
+from pathlib import Path
+
+# Get the directory of the current Python file
+BASE_DIR = Path(__file__).resolve().parent
+
+# Locate the .env file 2 levels up
+ENV_PATH = BASE_DIR.parent.parent / ".env"
 
 load_dotenv()
 
@@ -17,22 +24,16 @@ class Config:
     DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", 8501))
 
     SERVICES = {
-        "ml_engine": os.getenv(
-            "ML_ENGINE_URL", f"http://{ML_ENGINE_NAME}:{ML_ENGINE_PORT}"
-        ),
-        "api_gateway": os.getenv(
-            "GATEWAY_URL", f"http://{GATEWAY_NAME}:{GATEWAY_PORT}"
-        ),
-        "dashboard": os.getenv(
-            "DASHBOARD_URL", f"http://{DASHBOARD_NAME}:{DASHBOARD_PORT}"
-        ),
+        "ML_ENGINE_URL":f"http://{ML_ENGINE_NAME}:{ML_ENGINE_PORT}",
+        "API_GATEWAY_URL": f"http://{GATEWAY_NAME}:{GATEWAY_PORT}",
+        "DASHBOARD_URL": f"http://{DASHBOARD_NAME}:{DASHBOARD_PORT}",
     }
 
     # ---- External URLs (Host Machine / Browser Access) ----
     EXTERNAL_URLS = {
-        "gateway": f"http://localhost:{GATEWAY_PORT}",
-        "ml_engine": f"http://localhost:{ML_ENGINE_PORT}",
-        "dashboard": f"http://localhost:{DASHBOARD_PORT}",
+        "API_GATEWAY_URL": f"http://localhost:{GATEWAY_PORT}",
+        "ML_ENGINE_URL": f"http://localhost:{ML_ENGINE_PORT}",
+        "DASHBOARD_URL": f"http://localhost:{DASHBOARD_PORT}",
     }
 
 

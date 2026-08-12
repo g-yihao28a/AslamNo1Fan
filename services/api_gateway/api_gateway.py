@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, redirect
 import requests
 from config import config
 import os
@@ -9,8 +9,6 @@ app = Flask(__name__)
 GATEWAY_PORT = config.GATEWAY_PORT
 SERVICES = config.SERVICES
 
-ML_ENGINE_URL = os.getenv("ML_ENGINE_URL", "http://ml_engine:8010")
-
 # Debug to check if gateway is running
 @app.route("/health", methods=["GET"])
 def health_check():
@@ -20,7 +18,7 @@ def health_check():
 @app.route("/health/ml-engine", methods=["GET"])
 def check_ml_engine():
     """Checks communication between API Gateway and ML Engine."""
-    target_url = f"{ML_ENGINE_URL}/health"
+    target_url = f"{config.SERVICES["ML_ENGINE_URL"]}/health"
     
     try:
         # Send request with a strict timeout so the Gateway doesn't hang
@@ -41,15 +39,19 @@ def check_ml_engine():
     except requests.exceptions.ConnectionError:
         return jsonify({
             "status": "unreachable",
-            "message": f"Could not connect to ML Engine at {ML_ENGINE_URL}. Check network/container status."
+            "message": f"Could not connect to ML Engine at {config.SERVICES["ML_ENGINE_URL"]}. Check network/container status."
         }), 503
 
     except requests.exceptions.Timeout:
         return jsonify({
             "status": "timeout",
-            "message": f"Request to ML Engine at {ML_ENGINE_URL} timed out."
+            "message": f"Request to ML Engine at {config.SERVICES["ML_ENGINE_URL"]} timed out."
         }), 504
 
+@app.route("/dashboard", methods=["GET"])
+def redirect_to_dashboard():
+    external_dashboard_url = config.EXTERNAL_URLS["DASHBOARD_URL"]
+    return redirect(external_dashboard_url, code=302)
 
 if __name__ == "__main__":
     print(f"Flask API Gateway starting on http://localhost:{GATEWAY_PORT}")
