@@ -1,7 +1,7 @@
 services:
   # 1. Database — Postgres, auto-loads schema from init_scripts/ on first boot
   database:
-    build: ./services/database_service
+    build: ./services/database
     container_name: telco_database
     environment:
       POSTGRES_DB: ${DB_NAME:-telco_churn_db}
@@ -22,7 +22,7 @@ services:
   # One-off job: loads the real Excel data into the database tables.
   # Run explicitly with: docker compose run --rm db_loader
   db_loader:
-    build: ./services/database_service/loader
+    build: ./services/database/loader
     container_name: telco_db_loader
     environment:
       DB_HOST: database
@@ -38,6 +38,26 @@ services:
         condition: service_healthy
     profiles:
       - tools
+
+  database_service:
+    build: ./services/database/api
+    container_name: telco_database_service
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-telco_churn_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
+
+    ports:
+      - "5000:5000"
+
+    depends_on:
+      database:
+        condition: service_healthy
+
+    networks:
+      - backend-net
 
   # 2. ML engine — trains + serves the churn prediction model
   ml_engine:
