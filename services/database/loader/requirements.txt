@@ -1,0 +1,6 @@
+flask
+requests
+pandas
+openpyxl
+sqlalchemy
+psycopg2-binary

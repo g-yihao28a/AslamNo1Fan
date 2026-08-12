@@ -1,0 +1,123 @@
+services:
+  # 1. Database — Postgres, auto-loads schema from init_scripts/ on first boot
+  database:
+    build: ./services/database
+    container_name: telco_database
+    environment:
+      POSTGRES_DB: ${DB_NAME:-telco_churn_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrespassword}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-telco_churn_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-net
+
+  # One-off job: loads the real Excel data into the database tables.
+  # Run explicitly with: docker compose run --rm db_loader
+  db_loader:
+    build: ./services/database/loader
+    container_name: telco_db_loader
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-telco_churn_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
+      DATA_DIR: /data
+    volumes:
+      - "./data/telco_data:/data:ro"
+    depends_on:
+      database:
+        condition: service_healthy
+    profiles:
+      - tools
+    networks:
+      - backend-net
+
+  database_service:
+    build: ./services/database/api
+    container_name: telco_database_service
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-telco_churn_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
+
+    ports:
+      - "5000:5000"
+
+    depends_on:
+      database:
+        condition: service_healthy
+
+    networks:
+      - backend-net
+
+  # 2. ML engine — trains + serves the churn prediction model
+  ml_engine:
+    build: ./services/ml_engine
+    container_name: telco_ml_engine
+    ports:
+      - "${ML_ENGINE_PORT:-8010}:${ML_ENGINE_PORT:-8010}"
+    environment:
+      TRAINING_DATA_PATH: /data/Telco_customer_churn.xlsx
+    volumes:
+      - "./data/telco_data:/data:ro"
+      - ml_model_data:/app/model
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend-net
+
+  # 3. Dashboard — Streamlit, interactive charts + a live "predict churn" panel
+  dashboard:
+    build:
+      context: ./services/dashboard
+    container_name: telco_dashboard
+    ports:
+      - "${DASHBOARD_PORT:-8501}:${DASHBOARD_PORT:-8501}"
+    environment:
+      DASHBOARD_PORT: ${DASHBOARD_PORT:-8501}
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-telco_churn_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend-net
+
+  # 4. API gateway — single entrypoint that proxies to ml_engine / dashboard
+  api_gateway:
+    build: ./services/api_gateway
+    container_name: telco_api_gateway
+    ports:
+      - "${GATEWAY_PORT:-8008}:${GATEWAY_PORT:-8008}"
+    env_file:
+      - .env
+    
+    depends_on:
+      database:
+        condition: service_healthy
+
+    networks:
+      - backend-net
+
+volumes:
+  postgres_data:
+  ml_model_data:
+
+networks:
+  backend-net:
+    driver: bridge
