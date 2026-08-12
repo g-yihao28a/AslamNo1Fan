@@ -106,6 +106,18 @@ def train_model(data_path=None):
         "roc_auc": round(roc_auc_score(y_test, y_prob), 4),
     }
 
+    # Extract Top 15 Feature Importances
+    feature_names = pipeline.named_steps["preprocess"].get_feature_names_out()
+    importances = pipeline.named_steps["model"].feature_importances_
+    
+    top_importances = (
+        pd.Series(importances, index=feature_names)
+        .sort_values(ascending=False)
+        .head(15)
+        .round(4)
+        .to_dict()
+    )
+
     os.makedirs(config.MODEL_DIR, exist_ok=True)
     joblib.dump(pipeline, config.MODEL_PATH)
 
@@ -116,6 +128,7 @@ def train_model(data_path=None):
         "n_test_rows": len(X_test),
         "features": ALL_FEATURES,
         "metrics": metrics,
+        "top_feature_importances": top_importances,
     }
     with open(config.METADATA_PATH, "w") as f:
         json.dump(metadata, f, indent=2)
@@ -126,3 +139,4 @@ def train_model(data_path=None):
 if __name__ == "__main__":
     result = train_model()
     print(json.dumps(result, indent=2))
+    
