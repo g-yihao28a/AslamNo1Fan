@@ -3,7 +3,7 @@ services:
   database:
     build: 
       context: ./services/database
-      dockerfile: Dockerfile.db
+      dockerfile: Dockerfile
     container_name: telco_database
     environment:
       POSTGRES_DB: ${INTERNAL_DB_NAME:-telco_churn_db}
@@ -39,8 +39,6 @@ services:
     depends_on:
       database:
         condition: service_healthy
-    profiles:
-      - tools
     networks:
       - backend-net
 
