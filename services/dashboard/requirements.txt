@@ -4,3 +4,5 @@ plotly
 sqlalchemy
 psycopg2-binary
 requests
+flask
+requests
