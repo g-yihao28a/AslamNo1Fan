@@ -1,14 +1,16 @@
 services:
   # 1. Database — Postgres, auto-loads schema from init_scripts/ on first boot
   database:
-    build: ./services/database
+    build: 
+      context: ./services/database_service
+      dockerfile: Dockerfile.db
     container_name: telco_database
     environment:
-      POSTGRES_DB: ${DB_NAME:-telco_churn_db}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${INTERNAL_DB_NAME:-telco_churn_db}
+      POSTGRES_USER: ${INTERNAL_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${INTERNAL_DB_PASSWORD:-postgrespassword}
     ports:
-      - "${DB_PORT:-5432}:${DB_PORT:-5432}"
+      - "${INTERNAL_DB_PORT:-5432}:${INTERNAL_DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +18,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - backend-net
+
+# Python application for Database
+  database_app:
+    build: 
+      context: ./services/database_service
+      dockerfile: Dockerfile.app
+    container_name: telco_database_app
+    ports:
+      - "${DATABASE_PORT:-5432}:${DATABASE_PORT:-5432}"
+    env_file:
+      - .env
+    depends_on:
+      - database
     networks:
       - backend-net
 
