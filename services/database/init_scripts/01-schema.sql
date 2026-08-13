@@ -61,6 +61,5 @@ CREATE TABLE IF NOT EXISTS inference_logs (
     churn_probability NUMERIC(5, 4),
     predicted_churn BOOLEAN NOT NULL,
     model_version VARCHAR(20) DEFAULT 'v1.0',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customer_location(customer_id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
