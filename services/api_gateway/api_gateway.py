@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, redirect
+from flask import Flask, jsonify, request, redirect, render_template
 import requests
 from config import config
 import os
@@ -9,44 +9,50 @@ app = Flask(__name__)
 GATEWAY_PORT = config.GATEWAY_PORT
 SERVICES = config.SERVICES
 
-# Debug to check if gateway is running
+# Display html  page when users visit base address
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+# Debug to check communication between services
 @app.route("/health", methods=["GET"])
 def health_check():
-    return {"status": "Flask API Gateway is running"}, 200
+    service_statuses = {}
+    all_healthy = True
 
+    for name, base_url in SERVICES.items():
+        # Prevent self-calls if a gateway URL accidentally gets added to SERVICES
+        if base_url.rstrip("/").startswith(SERVICES["API_GATEWAY_URL"].rstrip("/")):
+            service_statuses[name] = "UP"
+            continue
 
-@app.route("/health/ml-engine", methods=["GET"])
-def check_ml_engine():
-    """Checks communication between API Gateway and ML Engine."""
-    target_url = f"{config.SERVICES["ML_ENGINE_URL"]}/health"
-    
-    try:
-        # Send request with a strict timeout so the Gateway doesn't hang
-        response = requests.get(target_url, timeout=3.0)
-        
-        if response.status_code == 200:
-            return jsonify({
-                "status": "healthy",
-                "message": "Gateway can communicate with ML Engine",
-                "ml_engine_response": response.json()
-            }), 200
-        else:
-            return jsonify({
-                "status": "unhealthy",
-                "message": f"ML Engine responded with status code {response.status_code}"
-            }), 502
+        # Cleanly construct target health URL: http://service:port/health
+        health_endpoint = f"{base_url.rstrip('/')}/health"
 
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            "status": "unreachable",
-            "message": f"Could not connect to ML Engine at {config.SERVICES["ML_ENGINE_URL"]}. Check network/container status."
-        }), 503
+        try:
+            response = requests.get(health_endpoint, timeout=2.0)
+            
+            if response.status_code == 200:
+                service_statuses[name] = "UP"
+            else:
+                service_statuses[name] = f"DOWN (HTTP {response.status_code})"
+                all_healthy = False
 
-    except requests.exceptions.Timeout:
-        return jsonify({
-            "status": "timeout",
-            "message": f"Request to ML Engine at {config.SERVICES["ML_ENGINE_URL"]} timed out."
-        }), 504
+        except requests.exceptions.RequestException:
+            service_statuses[name] = "DOWN (UNREACHABLE)"
+            all_healthy = False
+
+    status_code = 200 if all_healthy else 503
+    return {
+        "status": "healthy" if all_healthy else "degraded",
+        "services": service_statuses
+    }, status_code
+
+    return {
+        "gateway_status": "Flask API Gateway is running",
+        "overall_status": overall_status,
+        "services": service_statuses
+    }, status_code
 
 @app.route("/dashboard", methods=["GET"])
 def redirect_to_dashboard():
