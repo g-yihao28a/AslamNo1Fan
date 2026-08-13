@@ -1,6 +1,7 @@
 import requests
 import streamlit as st
 import plotly.express as px
+import uuid
 
 from config import config
 from data_access import load_customer_data, load_inference_logs
@@ -195,6 +196,32 @@ with tab_predict:
                     st.error("Prediction: likely to churn")
                 else:
                     st.success("Prediction: likely to stay")
+                
+                # --- NEW CODE: SAVE THE PREDICTION TO THE DATABASE ---
+                try:
+                    # Generate a dummy ID for the dashboard user (e.g., "guest-a1b2c3")
+                    dummy_id = f"guest-{uuid.uuid4().hex[:6]}"
+                    
+                    db_payload = {
+                        "customer_id": dummy_id,
+                        "churn_probability": prob,
+                        "predicted_churn": result["predicted_churn"]
+                    }
+                    
+                    # Send to the database microservice (adjust the URL if your service name is different in docker-compose)
+                    db_url = "http://database_service:5000/logs"
+                    db_resp = requests.post(db_url, json=db_payload, timeout=5)
+                    
+                    if db_resp.status_code == 201:
+                        # Clear Streamlit's cache so the "Recent Predictions" tab updates instantly!
+                        load_inference_logs.clear()
+                    else:
+                        st.warning(f"Failed to save log to DB: {db_resp.text}")
+                        
+                except Exception as db_exc:
+                    st.warning(f"Could not connect to database service to save log: {db_exc}")
+                # -----------------------------------------------------
+
             else:
                 st.warning(f"ML engine returned an error: {resp.json()}")
         except requests.RequestException as exc:

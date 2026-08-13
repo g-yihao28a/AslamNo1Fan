@@ -242,6 +242,34 @@ def delete_customer(customer_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# POST - CREATE INFERENCE LOG
+@app.route("/logs", methods=["POST"])
+def create_log():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        customer_id = data.get("customer_id")
+        churn_prob = data.get("churn_probability")
+        predicted_churn = data.get("predicted_churn")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO inference_logs 
+            (customer_id, churn_probability, predicted_churn)
+            VALUES (%s, %s, %s)
+        """, (customer_id, churn_prob, predicted_churn))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"message": "Log saved successfully"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(
