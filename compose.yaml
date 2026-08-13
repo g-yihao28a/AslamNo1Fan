@@ -38,6 +38,8 @@ services:
         condition: service_healthy
     profiles:
       - tools
+    networks:
+      - backend-net
 
   database_service:
     build: ./services/database/api
