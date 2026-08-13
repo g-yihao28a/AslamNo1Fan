@@ -186,7 +186,7 @@ with tab_predict:
         }
         try:
             resp = requests.post(
-                f"{config.API_GATEWAY_URL}/api/ml/predict", json=payload, timeout=10
+                f"{config.ML_ENGINE_URL}/predict", json=payload, timeout=10
             )
             if resp.status_code == 200:
                 result = resp.json()
