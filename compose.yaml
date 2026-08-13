@@ -2,7 +2,7 @@ services:
   # 1. Database — Postgres, auto-loads schema from init_scripts/ on first boot
   database:
     build: 
-      context: ./services/database_service
+      context: ./services/database
       dockerfile: Dockerfile.db
     container_name: telco_database
     environment:
@@ -21,20 +21,6 @@ services:
     networks:
       - backend-net
 
-# Python application for Database
-  database_app:
-    build: 
-      context: ./services/database_service
-      dockerfile: Dockerfile.app
-    container_name: telco_database_app
-    ports:
-      - "${DATABASE_PORT:-5432}:${DATABASE_PORT:-5432}"
-    env_file:
-      - .env
-    depends_on:
-      - database
-    networks:
-      - backend-net
 
   # One-off job: loads the real Excel data into the database tables.
   # Run explicitly with: docker compose run --rm db_loader
