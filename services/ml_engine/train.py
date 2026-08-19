@@ -99,24 +99,28 @@ def train_model(data_path=None):
     y_prob = pipeline.predict_proba(X_test)[:, 1]
 
     metrics = {
-        "accuracy": round(accuracy_score(y_test, y_pred), 4),
-        "precision": round(precision_score(y_test, y_pred), 4),
-        "recall": round(recall_score(y_test, y_pred), 4),
-        "f1": round(f1_score(y_test, y_pred), 4),
-        "roc_auc": round(roc_auc_score(y_test, y_prob), 4),
+        "accuracy": float(round(accuracy_score(y_test, y_pred), 4)),
+        "precision": float(round(precision_score(y_test, y_pred), 4)),
+        "recall": float(round(recall_score(y_test, y_pred), 4)),
+        "f1": float(round(f1_score(y_test, y_pred), 4)),
+        "roc_auc": float(round(roc_auc_score(y_test, y_prob), 4)),
     }
 
     # Extract Top 15 Feature Importances
     feature_names = pipeline.named_steps["preprocess"].get_feature_names_out()
     importances = pipeline.named_steps["model"].feature_importances_
     
-    top_importances = (
-        pd.Series(importances, index=feature_names)
-        .sort_values(ascending=False)
-        .head(15)
-        .round(4)
-        .to_dict()
-    )
+    # Convert feature importances explicitly to float dictionary values
+    top_importances = {
+        k: float(v)
+        for k, v in (
+            pd.Series(importances, index=feature_names)
+            .sort_values(ascending=False)
+            .head(15)
+            .round(4)
+            .to_dict()
+        ).items()
+    }
 
     os.makedirs(config.MODEL_DIR, exist_ok=True)
     joblib.dump(pipeline, config.MODEL_PATH)
@@ -130,6 +134,7 @@ def train_model(data_path=None):
         "metrics": metrics,
         "top_feature_importances": top_importances,
     }
+    
     with open(config.METADATA_PATH, "w") as f:
         json.dump(metadata, f, indent=2)
 

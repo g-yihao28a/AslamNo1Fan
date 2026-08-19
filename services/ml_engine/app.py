@@ -74,11 +74,18 @@ def train():
     """Trains (or retrains) the churn model and reloads it into memory."""
     try:
         metadata = train_model()
-    except Exception as exc:
-        return {"error": str(exc)}, 500
+        # Guard clause: ensure train_model() didn't silently return None
+        if metadata is None:
+            metadata = {"status": "success", "message": "Model trained, no metadata returned."}
 
-    _load_model()
-    return jsonify(metadata), 200
+        # Reload model into memory
+        _load_model()
+        return jsonify(metadata), 200
+    
+    except Exception as exc:
+        # Always wrap error dictionaries in jsonify() to return a valid Flask response
+        return jsonify({"error": str(exc)}), 500    
+    
 
 
 @app.route("/predict", methods=["POST"])
