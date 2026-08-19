@@ -5,17 +5,8 @@ from config import config
 
 app = Flask(__name__)
 
-
 ### Routing
 # Display html page when users visit base address
-=======
-# Load variables from config or environment
-GATEWAY_PORT = config.GATEWAY_PORT
-SERVICES=config.SERVICES
-
-
-# Display html  page when users visit base address
->>>>>>> e695e1212c8331e625aba88e49812815d0ffc8c7
 @app.route('/')
 def home():
     return render_template('index.html')
