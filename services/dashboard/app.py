@@ -15,9 +15,7 @@ st.set_page_config(page_title="Telco Churn Dashboard", layout="wide")
 
 st.title("📊 Telco Customer Churn Dashboard")
 
-tab_overview, tab_predict, tab_logs = st.tabs(
-    ["Overview", "Predict Churn", "Recent Predictions"]
-)
+(tab_overview,) = st.tabs(["Overview"])
 
 # ---------------------------------------------------------------------------
 # Overview tab: interactive filters + KPIs + charts, all backed by live DB data
@@ -128,115 +126,6 @@ with tab_overview:
             "The database is empty. Run the loader job to import the "
             "telco churn Excel data (see ReadMe.md)."
         )
-
-# ---------------------------------------------------------------------------
-# Predict tab: interactive form that calls the ML engine (through the gateway)
-# ---------------------------------------------------------------------------
-with tab_predict:
-    st.subheader("Score a customer")
-    st.caption("Sends the inputs to the ML engine's /predict endpoint live.")
-
-    with st.form("predict_form"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            tenure = st.slider("Tenure (months)", 0, 72, 12)
-            monthly_charges = st.slider("Monthly charges", 0.0, 150.0, 65.0)
-            total_charges = st.number_input("Total charges", 0.0, 10000.0, 780.0)
-            gender = st.selectbox("Gender", FEATURE_OPTIONS["Gender"])
-        with col2:
-            senior = st.selectbox("Senior citizen", FEATURE_OPTIONS["Senior Citizen"])
-            partner = st.selectbox("Partner", FEATURE_OPTIONS["Partner"])
-            dependents = st.selectbox("Dependents", FEATURE_OPTIONS["Dependents"])
-            contract = st.selectbox("Contract", FEATURE_OPTIONS["Contract"])
-        with col3:
-            internet = st.selectbox(
-                "Internet service", FEATURE_OPTIONS["Internet Service"]
-            )
-            payment = st.selectbox(
-                "Payment method", FEATURE_OPTIONS["Payment Method"]
-            )
-            paperless = st.selectbox(
-                "Paperless billing", FEATURE_OPTIONS["Paperless Billing"]
-            )
-            phone = st.selectbox("Phone service", FEATURE_OPTIONS["Phone Service"])
-
-        submitted = st.form_submit_button("Predict churn risk")
-
-    if submitted:
-        payload = {
-            "Tenure Months": tenure,
-            "Monthly Charges": monthly_charges,
-            "Total Charges": total_charges,
-            "Gender": gender,
-            "Senior Citizen": senior,
-            "Partner": partner,
-            "Dependents": dependents,
-            "Phone Service": phone,
-            "Multiple Lines": "No",
-            "Internet Service": internet,
-            "Online Security": "No",
-            "Online Backup": "No",
-            "Device Protection": "No",
-            "Tech Support": "No",
-            "Streaming TV": "No",
-            "Streaming Movies": "No",
-            "Contract": contract,
-            "Paperless Billing": paperless,
-            "Payment Method": payment,
-        }
-        try:
-            resp = requests.post(
-                f"{config.ML_ENGINE_URL}/predict", json=payload, timeout=10
-            )
-            if resp.status_code == 200:
-                result = resp.json()
-                prob = result["churn_probability"]
-                st.metric("Churn probability", f"{prob * 100:.1f}%")
-                if result["predicted_churn"]:
-                    st.error("Prediction: likely to churn")
-                else:
-                    st.success("Prediction: likely to stay")
-                
-                # --- NEW CODE: SAVE THE PREDICTION TO THE DATABASE ---
-                try:
-                    # Generate a dummy ID for the dashboard user (e.g., "guest-a1b2c3")
-                    dummy_id = f"guest-{uuid.uuid4().hex[:6]}"
-                    
-                    db_payload = {
-                        "customer_id": dummy_id,
-                        "churn_probability": prob,
-                        "predicted_churn": result["predicted_churn"]
-                    }
-                    
-                    # Send to the database microservice (adjust the URL if your service name is different in docker-compose)
-                    db_url = "http://database_service:5000/logs"
-                    db_resp = requests.post(db_url, json=db_payload, timeout=5)
-                    
-                    if db_resp.status_code == 201:
-                        # Clear Streamlit's cache so the "Recent Predictions" tab updates instantly!
-                        load_inference_logs.clear()
-                    else:
-                        st.warning(f"Failed to save log to DB: {db_resp.text}")
-                        
-                except Exception as db_exc:
-                    st.warning(f"Could not connect to database service to save log: {db_exc}")
-                # -----------------------------------------------------
-
-            else:
-                st.warning(f"ML engine returned an error: {resp.json()}")
-        except requests.RequestException as exc:
-            st.error(f"Could not reach the ML engine via the API gateway: {exc}")
-
-# ---------------------------------------------------------------------------
-# Logs tab: recent predictions written to inference_logs by the ML engine
-# ---------------------------------------------------------------------------
-with tab_logs:
-    st.subheader("Recent prediction history")
-    logs = load_inference_logs()
-    if logs.empty:
-        st.info("No predictions logged yet. Try the Predict Churn tab.")
-    else:
-        st.dataframe(logs, use_container_width=True)
 
 @app.route("/health", methods=["GET"])
 def health_check():

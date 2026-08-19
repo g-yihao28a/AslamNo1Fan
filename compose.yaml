@@ -79,7 +79,7 @@ services:
     networks:
       - backend-net
 
-  # 3. Dashboard — Streamlit, interactive charts + a live "predict churn" panel
+  # 3. Dashboard — Streamlit, interactive charts
   dashboard:
     build:
       context: ./services/dashboard
@@ -99,7 +99,7 @@ services:
     networks:
       - backend-net
 
-  # 4. API gateway — single entrypoint that proxies to ml_engine / dashboard
+  #  API gateway
   api_gateway:
     build: ./services/api_gateway
     container_name: telco_api_gateway
@@ -110,6 +110,19 @@ services:
     depends_on:
       - ml_engine
       - dashboard
+    networks:
+      - backend-net
+
+  #  Prediction service
+  ml_prediction:
+    build: ./services/ml_prediction
+    container_name: telco_ml_prediction
+    ports:
+      - "${ML_PREDICTION_PORT:-8011}:${ML_PREDICTION_PORT:-8011}"
+    env_file:
+      - .env
+    depends_on:
+      - ml_engine
     networks:
       - backend-net
 
