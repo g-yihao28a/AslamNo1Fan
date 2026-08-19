@@ -5,8 +5,17 @@ from config import config
 
 app = Flask(__name__)
 
+<<<<<<< HEAD
 ### Routing
 # Display html page when users visit base address
+=======
+# Load variables from config or environment
+GATEWAY_PORT = config.GATEWAY_PORT
+SERVICES=config.SERVICES
+
+
+# Display html  page when users visit base address
+>>>>>>> e695e1212c8331e625aba88e49812815d0ffc8c7
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -85,6 +94,17 @@ def health_check():
         "services": service_statuses
     }, status_code
 
+<<<<<<< HEAD
 if __name__ == "__main__":
     print(f"Flask API Gateway starting on http://0.0.0.0:{config.GATEWAY_PORT}")
     app.run(host="0.0.0.0", port=config.GATEWAY_PORT, debug=True)
+=======
+@app.route("/dashboard", methods=["GET"])
+def redirect_to_dashboard():
+    external_dashboard_url = config.EXTERNAL_URLS["DASHBOARD_URL"]
+    return redirect(external_dashboard_url, code=302)
+
+if __name__ == "__main__":
+    print(f"Flask API Gateway starting on http://localhost:{GATEWAY_PORT}")
+    app.run(host="0.0.0.0", port=GATEWAY_PORT, debug=True)
+>>>>>>> e695e1212c8331e625aba88e49812815d0ffc8c7
