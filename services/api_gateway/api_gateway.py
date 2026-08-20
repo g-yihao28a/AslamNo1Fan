@@ -99,7 +99,7 @@ def ml_gateway():
 # Train ml model
 @app.route('/ml_train')
 def train_model():
-    response = requests.post(f'{config.SERVICES["ML_ENGINE_URL"].rstrip('/')}/train')
+    response = requests.post(f'{config.SERVICES["ML_ENGINE_URL"].rstrip("/")}/train')
     if response.status_code == 200:
         print("Model retrained successfully:")
         metadata = response.json()
@@ -151,12 +151,6 @@ def health_check():
     status_code = 200 if all_healthy else 503
     return {
         "status": "healthy" if all_healthy else "degraded",
-        "services": service_statuses
-    }, status_code
-
-    return {
-        "gateway_status": "Flask API Gateway is running",
-        "overall_status": overall_status,
         "services": service_statuses
     }, status_code
 

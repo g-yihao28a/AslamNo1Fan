@@ -3,37 +3,569 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Gateway</title>
-  <!-- Tailwind CSS CDN -->
+  <title>Database Gateway</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-6 text-center antialiased">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-6 antialiased">
 
-  <main class="max-w-md w-full space-y-6">
-    <!-- Header Section -->
-    <header class="space-y-2">
+  <main class="max-w-5xl w-full space-y-6 my-8">
+    <header class="text-center space-y-1">
       <h1 class="text-3xl font-bold tracking-tight text-white">Database Gateway</h1>
-      <p class="text-slate-400 text-sm">Placeholder</p>
+      <p class="text-slate-400 text-sm">Customer Record Search, Ingestion & File Upload Service</p>
     </header>
 
-    <!-- Action Button -->
-    <a 
-      href="./dashboard" 
-      class="inline-flex items-center justify-center w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
-    >
-      Placeholder button
-    </a>
+    <div class="space-y-6">
+      <!-- 1. Unified Search (Combo Input + Datalist Dropdown) -->
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="border-b border-slate-800 pb-3">
+          <h2 class="text-base font-semibold text-emerald-400">View Customer Record</h2>
+          <p class="text-xs text-slate-400">Type an ID or select one from the unified dropdown</p>
+        </div>
 
-    <!-- Action Button -->
-     <!-- Return to home-->
-    <a 
-      href="./" 
-      class="inline-flex items-center justify-center w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
-    >
-      Return to homepage
-    </a>
-    
+        <form id="searchForm" class="flex gap-3">
+          <div class="flex-1 text-left">
+            <label for="search_customer_id" class="block text-xs text-slate-300 mb-1">Customer ID</label>
+            <input 
+              type="text" 
+              id="search_customer_id" 
+              list="customer_datalist"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              autocomplete="off"
+              required
+            >
+            <datalist id="customer_datalist"></datalist>
+          </div>
+          <div class="flex items-end">
+            <button 
+              type="submit" 
+              class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-2 text-sm rounded-xl transition shadow-lg shadow-emerald-600/20 active:scale-[0.98] h-[38px]"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+
+        <div id="searchResult" class="hidden text-xs p-4 rounded-xl bg-slate-950 border border-slate-800 text-left font-mono"></div>
+      </section>
+
+      <!-- 2. Single Record Entry Form -->
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+        <div class="border-b border-slate-800 pb-3">
+          <h2 class="text-base font-semibold text-emerald-400">Single Customer Entry</h2>
+          <p class="text-xs text-slate-400">Insert complete record to <code>/database/customers</code></p>
+        </div>
+
+        <form id="singleCustomerForm" class="space-y-6 text-left">
+          
+          <!-- Category 1: Identification & Demographics -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">1. Identification & Demographics</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label for="customer_id" class="block text-xs text-slate-300 mb-1">customer_id *</label>
+                <input type="text" id="customer_id" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="gender" class="block text-xs text-slate-300 mb-1">gender *</label>
+                <select id="gender" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                </select>
+              </div>
+              <div>
+                <label for="age" class="block text-xs text-slate-300 mb-1">age *</label>
+                <input type="number" id="age" min="1" max="120" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="under_18" class="block text-xs text-slate-300 mb-1">under_18</label>
+                <select id="under_18" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="senior_citizen" class="block text-xs text-slate-300 mb-1">senior_citizen</label>
+                <select id="senior_citizen" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="partner" class="block text-xs text-slate-300 mb-1">partner</label>
+                <select id="partner" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div>
+                <label for="dependents" class="block text-xs text-slate-300 mb-1">dependents</label>
+                <select id="dependents" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="number_of_dependents" class="block text-xs text-slate-300 mb-1">number_of_dependents</label>
+                <input type="number" id="number_of_dependents" min="0" value="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Category 2: Location -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">2. Location</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label for="country" class="block text-xs text-slate-300 mb-1">country</label>
+                <input type="text" id="country" value="United States" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="state" class="block text-xs text-slate-300 mb-1">state</label>
+                <input type="text" id="state" value="California" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="city" class="block text-xs text-slate-300 mb-1">city</label>
+                <input type="text" id="city" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="zip_code" class="block text-xs text-slate-300 mb-1">zip_code</label>
+                <input type="text" id="zip_code" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="latitude" class="block text-xs text-slate-300 mb-1">latitude</label>
+                <input type="text" id="latitude" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="longitude" class="block text-xs text-slate-300 mb-1">longitude</label>
+                <input type="text" id="longitude" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div class="sm:col-span-2">
+                <label for="lat_long" class="block text-xs text-slate-300 mb-1">lat_long</label>
+                <input type="text" id="lat_long" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Category 3: Subscribed Services -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">3. Subscribed Services</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label for="phone_service" class="block text-xs text-slate-300 mb-1">phone_service</label>
+                <select id="phone_service" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div>
+                <label for="multiple_lines" class="block text-xs text-slate-300 mb-1">multiple_lines</label>
+                <select id="multiple_lines" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="internet_service" class="block text-xs text-slate-300 mb-1">internet_service</label>
+                <select id="internet_service" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div>
+                <label for="internet_type" class="block text-xs text-slate-300 mb-1">internet_type</label>
+                <select id="internet_type" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Cable">Cable</option>
+                  <option value="Fiber Optic">Fiber Optic</option>
+                  <option value="DSL">DSL</option>
+                  <option value="None">None</option>
+                </select>
+              </div>
+              <div>
+                <label for="online_security" class="block text-xs text-slate-300 mb-1">online_security</label>
+                <select id="online_security" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="online_backup" class="block text-xs text-slate-300 mb-1">online_backup</label>
+                <select id="online_backup" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div>
+                <label for="device_protection" class="block text-xs text-slate-300 mb-1">device_protection</label>
+                <select id="device_protection" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="tech_support" class="block text-xs text-slate-300 mb-1">tech_support</label>
+                <select id="tech_support" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div>
+                <label for="streaming_tv" class="block text-xs text-slate-300 mb-1">streaming_tv</label>
+                <select id="streaming_tv" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div>
+                <label for="streaming_movies" class="block text-xs text-slate-300 mb-1">streaming_movies</label>
+                <select id="streaming_movies" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category 4: Contract & Financials -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">4. Contract & Financials</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label for="tenure_in_months" class="block text-xs text-slate-300 mb-1">tenure_in_months *</label>
+                <input type="number" id="tenure_in_months" min="0" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="contract" class="block text-xs text-slate-300 mb-1">contract *</label>
+                <select id="contract" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="One Year">One Year</option>
+                  <option value="Month-to-Month">Month-to-Month</option>
+                  <option value="Two Year">Two Year</option>
+                </select>
+              </div>
+              <div>
+                <label for="paperless_billing" class="block text-xs text-slate-300 mb-1">paperless_billing</label>
+                <select id="paperless_billing" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div>
+                <label for="payment_method" class="block text-xs text-slate-300 mb-1">payment_method</label>
+                <select id="payment_method" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Bank Withdrawal">Bank Withdrawal</option>
+                  <option value="Mailed Check">Mailed Check</option>
+                </select>
+              </div>
+              <div>
+                <label for="monthly_charge" class="block text-xs text-slate-300 mb-1">monthly_charge (string) *</label>
+                <input type="text" id="monthly_charge" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="total_charges" class="block text-xs text-slate-300 mb-1">total_charges (string) *</label>
+                <input type="text" id="total_charges" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="cltv" class="block text-xs text-slate-300 mb-1">cltv *</label>
+                <input type="number" id="cltv" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="satisfaction_score" class="block text-xs text-slate-300 mb-1">satisfaction_score</label>
+                <input type="number" id="satisfaction_score" min="1" max="5" value="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Category 5: Churn & Status -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">5. Churn & Customer Status</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div>
+                <label for="customer_status" class="block text-xs text-slate-300 mb-1">customer_status</label>
+                <select id="customer_status" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Stayed">Stayed</option>
+                  <option value="Churned">Churned</option>
+                  <option value="Joined">Joined</option>
+                </select>
+              </div>
+              <div>
+                <label for="churn_label" class="block text-xs text-slate-300 mb-1">churn_label</label>
+                <select id="churn_label" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="churn_value" class="block text-xs text-slate-300 mb-1">churn_value</label>
+                <input type="number" id="churn_value" min="0" max="1" value="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="churn_score" class="block text-xs text-slate-300 mb-1">churn_score</label>
+                <input type="number" id="churn_score" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="churn_category" class="block text-xs text-slate-300 mb-1">churn_category</label>
+                <input type="text" id="churn_category" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="churn_reason" class="block text-xs text-slate-300 mb-1">churn_reason</label>
+                <input type="text" id="churn_reason" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <div id="singleFeedback" class="hidden text-xs p-3 rounded-xl"></div>
+
+          <button type="submit" class="w-full inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-3 rounded-xl transition shadow-lg shadow-emerald-600/20 active:scale-[0.98]">
+            Insert Record
+          </button>
+        </form>
+      </section>
+
+      <!-- 3. Bulk File Upload -->
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="border-b border-slate-800 pb-3">
+          <h2 class="text-base font-semibold text-emerald-400">Bulk File Upload</h2>
+          <p class="text-xs text-slate-400">Upload multiple rows via <code>.csv</code></p>
+        </div>
+
+        <form id="bulkUploadForm" class="space-y-4">
+          <div>
+            <input 
+              type="file" 
+              id="bulkFile" 
+              name="file" 
+              accept=".csv, .xlsx, .xls" 
+              class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-950 file:text-emerald-300 hover:file:bg-emerald-900 cursor-pointer bg-slate-950 border border-slate-700 rounded-xl p-1.5 focus:outline-none transition"
+              required
+            >
+          </div>
+
+          <div id="bulkFeedback" class="hidden text-xs p-3 rounded-xl"></div>
+
+          <button 
+            type="submit" 
+            class="w-full inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20 active:scale-[0.98]"
+          >
+            Upload Customer File
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <!-- Navigation Footer -->
+    <div class="flex items-center justify-between pt-2 px-2">
+      <a href="/database/customers/full" class="text-xs text-emerald-400 hover:text-emerald-300 underline underline-offset-4 transition">
+        View All Customers (JSON) &rarr;
+      </a>
+      <a href="/" class="text-xs text-slate-400 hover:text-slate-200 transition">
+        &larr; Return to homepage
+      </a>
+    </div>
   </main>
 
+  <script>
+    // Fetch and populate customer IDs into the datalist on load
+    async function loadCustomerDatalist() {
+      const datalist = document.getElementById('customer_datalist');
+      try {
+        const res = await fetch('/database/customers/full');
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.customers || []);
+
+        datalist.innerHTML = '';
+        list.forEach(c => {
+          if (c.customer_id) {
+            const opt = document.createElement('option');
+            opt.value = c.customer_id;
+            opt.label = `${c.customer_id} (${c.customer_status || 'Status N/A'})`;
+            datalist.appendChild(opt);
+          }
+        });
+      } catch (err) {
+        console.error('Could not populate customer datalist:', err);
+      }
+    }
+
+    // Main search function
+    async function executeCustomerSearch(customerId) {
+      const resultBox = document.getElementById('searchResult');
+      if (!customerId) return;
+
+      resultBox.className = 'text-xs p-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 font-mono';
+      resultBox.innerText = 'Searching database...';
+      resultBox.classList.remove('hidden');
+
+      try {
+        const res = await fetch(`/database/customers/full/${encodeURIComponent(customerId)}`);
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Customer not found');
+
+        const record = data.customer || data;
+
+        resultBox.className = 'text-xs p-4 rounded-xl bg-slate-950 border border-emerald-800/60 text-slate-200 font-mono space-y-3';
+        resultBox.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-emerald-400 font-bold text-sm">Customer: ${record.customer_id || customerId}</span>
+            <span class="px-2 py-0.5 rounded text-[11px] ${record.customer_status === 'Stayed' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}">${record.customer_status || 'N/A'}</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-2 gap-x-4">
+            <div><span class="text-slate-500">age / gender:</span> ${record.age ?? 'N/A'} (${record.gender || 'N/A'})</div>
+            <div><span class="text-slate-500">city / state:</span> ${record.city || 'N/A'}, ${record.state || 'N/A'}</div>
+            <div><span class="text-slate-500">zip_code:</span> ${record.zip_code || 'N/A'}</div>
+            <div><span class="text-slate-500">lat_long:</span> ${record.lat_long || (record.latitude && record.longitude ? record.latitude + ', ' + record.longitude : 'N/A')}</div>
+            <div><span class="text-slate-500">tenure_in_months:</span> ${record.tenure_in_months ?? 'N/A'}</div>
+            <div><span class="text-slate-500">contract:</span> ${record.contract || 'N/A'}</div>
+            <div><span class="text-slate-500">monthly_charge:</span> ${record.monthly_charge ?? 'N/A'}</div>
+            <div><span class="text-slate-500">total_charges:</span> ${record.total_charges ?? 'N/A'}</div>
+            <div><span class="text-slate-500">cltv:</span> ${record.cltv ?? 'N/A'}</div>
+            <div><span class="text-slate-500">internet_type:</span> ${record.internet_type || 'N/A'}</div>
+            <div><span class="text-slate-500">phone_service:</span> ${record.phone_service || 'N/A'}</div>
+            <div><span class="text-slate-500">tech_support:</span> ${record.tech_support || 'N/A'}</div>
+            <div><span class="text-slate-500">payment_method:</span> ${record.payment_method || 'N/A'}</div>
+            <div><span class="text-slate-500">satisfaction_score:</span> ${record.satisfaction_score ?? 'N/A'}</div>
+            <div><span class="text-slate-500">churn_label / value:</span> ${record.churn_label || 'N/A'} (${record.churn_value ?? 'N/A'})</div>
+            <div><span class="text-slate-500">churn_score:</span> ${record.churn_score ?? 'null'}</div>
+            <div><span class="text-slate-500">churn_category:</span> ${record.churn_category || 'null'}</div>
+            <div><span class="text-slate-500">churn_reason:</span> ${record.churn_reason || 'null'}</div>
+          </div>
+          <details class="pt-2 text-slate-400 cursor-pointer">
+            <summary class="hover:text-emerald-400 transition">View Raw JSON (All 38 Fields)</summary>
+            <pre class="mt-2 p-2 bg-slate-900 rounded-lg overflow-x-auto text-[11px] text-slate-300">${JSON.stringify(record, null, 2)}</pre>
+          </details>
+        `;
+      } catch (err) {
+        resultBox.className = 'text-xs p-4 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 font-sans';
+        resultBox.innerText = `Search Failed: ${err.message}`;
+      }
+    }
+
+    // Auto-search if a customer ID is selected from the datalist dropdown
+    document.getElementById('search_customer_id').addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      const options = Array.from(document.getElementById('customer_datalist').options).map(o => o.value);
+      if (options.includes(val)) {
+        executeCustomerSearch(val);
+      }
+    });
+
+    // 1. Handle Form Submit
+    document.getElementById('searchForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const customerId = document.getElementById('search_customer_id').value.trim();
+      executeCustomerSearch(customerId);
+    });
+
+    // 2. Insert Single Record Matching Schema Types
+    document.getElementById('singleCustomerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const feedback = document.getElementById('singleFeedback');
+      
+      const payload = {
+        age: parseInt(document.getElementById('age').value, 10),
+        churn_category: document.getElementById('churn_category').value.trim() || null,
+        churn_label: document.getElementById('churn_label').value,
+        churn_reason: document.getElementById('churn_reason').value.trim() || null,
+        churn_score: document.getElementById('churn_score').value ? parseInt(document.getElementById('churn_score').value, 10) : null,
+        churn_value: parseInt(document.getElementById('churn_value').value, 10),
+        city: document.getElementById('city').value.trim(),
+        cltv: parseInt(document.getElementById('cltv').value, 10),
+        contract: document.getElementById('contract').value,
+        country: document.getElementById('country').value.trim(),
+        customer_id: document.getElementById('customer_id').value.trim(),
+        customer_status: document.getElementById('customer_status').value,
+        dependents: document.getElementById('dependents').value,
+        device_protection: document.getElementById('device_protection').value,
+        gender: document.getElementById('gender').value,
+        internet_service: document.getElementById('internet_service').value,
+        internet_type: document.getElementById('internet_type').value,
+        lat_long: document.getElementById('lat_long').value.trim(),
+        latitude: document.getElementById('latitude').value.trim(),
+        longitude: document.getElementById('longitude').value.trim(),
+        monthly_charge: document.getElementById('monthly_charge').value.trim(),
+        multiple_lines: document.getElementById('multiple_lines').value,
+        number_of_dependents: parseInt(document.getElementById('number_of_dependents').value, 10),
+        online_backup: document.getElementById('online_backup').value,
+        online_security: document.getElementById('online_security').value,
+        paperless_billing: document.getElementById('paperless_billing').value,
+        partner: document.getElementById('partner').value,
+        payment_method: document.getElementById('payment_method').value,
+        phone_service: document.getElementById('phone_service').value,
+        satisfaction_score: parseInt(document.getElementById('satisfaction_score').value, 10),
+        senior_citizen: document.getElementById('senior_citizen').value,
+        state: document.getElementById('state').value.trim(),
+        streaming_movies: document.getElementById('streaming_movies').value,
+        streaming_tv: document.getElementById('streaming_tv').value,
+        tech_support: document.getElementById('tech_support').value,
+        tenure_in_months: parseInt(document.getElementById('tenure_in_months').value, 10),
+        total_charges: document.getElementById('total_charges').value.trim(),
+        under_18: document.getElementById('under_18').value,
+        zip_code: document.getElementById('zip_code').value.trim()
+      };
+
+      try {
+        const res = await fetch('/database/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Server rejected insertion');
+
+        feedback.className = 'text-xs p-3 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300';
+        feedback.innerText = 'Customer record inserted successfully!';
+        feedback.classList.remove('hidden');
+        document.getElementById('singleCustomerForm').reset();
+        loadCustomerDatalist(); // Refresh datalist options
+      } catch (err) {
+        feedback.className = 'text-xs p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300';
+        feedback.innerText = `Insertion Failed: ${err.message}`;
+        feedback.classList.remove('hidden');
+      }
+    });
+
+    // 3. Bulk Upload File
+    document.getElementById('bulkUploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const feedback = document.getElementById('bulkFeedback');
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const fileInput = document.getElementById('bulkFile');
+
+      if (!fileInput.files[0]) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Uploading file...';
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const res = await fetch('/database/customers/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Bulk upload failed');
+
+        feedback.className = 'text-xs p-3 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300';
+        feedback.innerText = data.message || 'File uploaded and parsed successfully!';
+        feedback.classList.remove('hidden');
+        document.getElementById('bulkUploadForm').reset();
+        loadCustomerDatalist(); // Refresh datalist options
+      } catch (err) {
+        feedback.className = 'text-xs p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300';
+        feedback.innerText = `Bulk Upload Failed: ${err.message}`;
+        feedback.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Upload Customer File';
+      }
+    });
+
+    // Initialize datalist options on page load
+    window.addEventListener('DOMContentLoaded', loadCustomerDatalist);
+  </script>
 </body>
 </html>
