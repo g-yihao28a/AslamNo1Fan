@@ -1,7 +1,5 @@
 pandas
 streamlit
-sqlalchemy
 flask
 requests
 python-dotenv
-psycopg2-binary

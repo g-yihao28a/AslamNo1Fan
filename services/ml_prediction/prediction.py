@@ -1,3 +1,5 @@
+import uuid
+
 import requests
 import streamlit as st
 from config import config
@@ -37,6 +39,12 @@ with tab_predict:
     st.caption("Sends the inputs to the ML engine's /predict endpoint live.")
 
     with st.form("predict_form"):
+        customer_id = st.text_input(
+            "Customer ID",
+            value=f"MANUAL-{uuid.uuid4().hex[:8].upper()}",
+            help="Used to save this prediction to Recent Predictions. "
+                 "Leave the auto-generated value, or enter a real customer ID.",
+        )
         col1, col2, col3 = st.columns(3)
         with col1:
             tenure = st.slider("Tenure (months)", 0, 72, 12)
@@ -64,6 +72,7 @@ with tab_predict:
 
     if submitted:
         payload = {
+            "customer_id": customer_id,
             "Tenure Months": tenure,
             "Monthly Charges": monthly_charges,
             "Total Charges": total_charges,
@@ -98,6 +107,10 @@ with tab_predict:
                     st.error("Prediction: likely to churn")
                 else:
                     st.success("Prediction: likely to stay")
+                # Invalidate the cached logs so "Recent Predictions" shows
+                # this prediction immediately instead of waiting out the
+                # 30s cache TTL.
+                data_access.load_inference_logs.clear()
             else:
                 st.warning(f"ML engine returned an error: {resp.json()}")
         except requests.RequestException as exc:

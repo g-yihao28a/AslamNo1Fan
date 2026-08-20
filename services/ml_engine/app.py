@@ -2,7 +2,7 @@ import json
 import os
 
 import joblib
-import psycopg2
+import requests
 from flask import Flask, jsonify, request
 
 from config import config
@@ -28,30 +28,24 @@ _load_model()
 
 
 def _log_inference(customer_id, probability, prediction, model_version):
-    """Best-effort write to inference_logs. Never blocks a prediction response."""
+    """Best-effort write to inference_logs, via the API gateway's
+    /database/logs route rather than a direct Postgres connection. Never
+    blocks a prediction response."""
     if not customer_id:
         return
     try:
-        conn = psycopg2.connect(
-            host=config.DB_HOST,
-            port=config.DB_PORT,
-            dbname=config.DB_NAME,
-            user=config.DB_USER,
-            password=config.DB_PASSWORD,
-            connect_timeout=3,
+        requests.post(
+            f"{config.API_GATEWAY_URL.rstrip('/')}/database/logs",
+            json={
+                "customer_id": customer_id,
+                "churn_probability": probability,
+                "predicted_churn": prediction,
+                "model_version": model_version,
+            },
+            timeout=3,
         )
-        with conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO inference_logs
-                    (customer_id, churn_probability, predicted_churn, model_version)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (customer_id, probability, prediction, model_version),
-            )
-        conn.close()
-    except Exception as exc:
-        app.logger.warning(f"Could not log inference to DB: {exc}")
+    except requests.exceptions.RequestException as exc:
+        app.logger.warning(f"Could not log inference via gateway: {exc}")
 
 
 @app.route("/health", methods=["GET"])

@@ -17,12 +17,16 @@ class Config:
     GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api_gateway")
     ML_ENGINE_NAME = os.getenv("ML_ENGINE_NAME", "ml_engine")
     DASHBOARD_NAME = os.getenv("DASHBOARD_NAME", "dashboard")
-    DATABASE_NAME = os.getenv("DATABASE_NAME", "database_app")
+    # NOTE: must match the service name in compose.yaml (`database_service`)
+    # and the port it actually listens on (5000, per its Dockerfile/app.run).
+    # The old defaults ("database_app" / 8009) didn't match any real
+    # container, so DATABASE_URL below pointed nowhere on the docker network.
+    DATABASE_NAME = os.getenv("DATABASE_NAME", "database_service")
     ML_PREDICTION_NAME = os.getenv("ML_PREDICTION_NAME","ml_prediction")
 
     # ---- Ports ----
     GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", 8008))
-    DATABASE_PORT = int(os.getenv("DATABASE_PORT", 8009))
+    DATABASE_PORT = int(os.getenv("DATABASE_PORT", 5000))
     ML_ENGINE_PORT = int(os.getenv("ML_ENGINE_PORT", 8010))
     ML_PREDICTION_PORT = int(os.getenv("ML_PREDICTION_PORT", 8011))
     DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", 8501))
