@@ -8,33 +8,8 @@ from config import config
 app = Flask(__name__)
 
 DATABASE_URL = config.SERVICES["DATABASE_URL"].rstrip("/")
+FEATURE_NAME_MAPPING = config.FEATURE_NAME_MAPPING
 
-# ---------------------------------------------------------------------------
-# Feature mapping dictionary: maps database snake_case to ML engine Title Case
-# ---------------------------------------------------------------------------
-FEATURE_NAME_MAPPING = {
-    "tenure_in_months": "Tenure Months",
-    "tenure_months": "Tenure Months",
-    "monthly_charge": "Monthly Charges",
-    "monthly_charges": "Monthly Charges",
-    "total_charges": "Total Charges",
-    "gender": "Gender",
-    "senior_citizen": "Senior Citizen",
-    "partner": "Partner",
-    "dependents": "Dependents",
-    "phone_service": "Phone Service",
-    "multiple_lines": "Multiple Lines",
-    "internet_service": "Internet Service",
-    "online_security": "Online Security",
-    "online_backup": "Online Backup",
-    "device_protection": "Device Protection",
-    "tech_support": "Tech Support",
-    "streaming_tv": "Streaming TV",
-    "streaming_movies": "Streaming Movies",
-    "contract": "Contract",
-    "paperless_billing": "Paperless Billing",
-    "payment_method": "Payment Method",
-}
 
 
 def _proxy_to_database(path, method):
@@ -62,13 +37,13 @@ def _proxy_to_database(path, method):
 
 
 ### Routing
-# Display html page when users visit base address
+# Home page
 @app.route('/')
 def home():
     return render_template('index.html')
 
 
-# Display html page when users visit base address
+# Database page
 @app.route('/database')
 def database_gateway():
     return render_template('database_gateway.html')
@@ -129,14 +104,14 @@ def database_logs():
     return _proxy_to_database("logs", request.method)
 
 
-# Display html page when users visit base address
+# ML Gateway
 @app.route('/ml')
 def ml_gateway():
     return render_template('ml_gateway.html')
 
 
 # Train ml model
-@app.route('/ml_train')
+@app.route('/ml/train')
 def train_model():
     response = requests.post(f'{config.SERVICES["ML_ENGINE_URL"].rstrip("/")}/train')
     if response.status_code == 200:

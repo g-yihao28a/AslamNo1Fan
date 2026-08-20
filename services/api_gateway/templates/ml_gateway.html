@@ -117,7 +117,7 @@
       feedback.innerText = 'Triggering retraining pipeline on ML Engine...';
 
       try {
-        const res = await fetch('/ml_train');
+        const res = await fetch('/ml/train');
         const data = await res.json();
 
         if (!res.ok) throw new Error(data.error || 'Training failed');

@@ -1,5 +1,5 @@
 services:
-  # 1. Database — Postgres, auto-loads schema from init_scripts/ on first boot
+  # Database 
   database:
     build: 
       context: ./services/database
@@ -22,7 +22,7 @@ services:
       - backend-net
 
 
-  # One-off job: loads the real Excel data into the database tables.
+  # One-off job: loads Excel data into the database tables.
   # Run explicitly with: docker compose run --rm db_loader
   db_loader:
     build: ./services/database/loader
@@ -42,6 +42,7 @@ services:
     networks:
       - backend-net
 
+  # Database service
   database_service:
     build: ./services/database/api
     container_name: telco_database_service
@@ -69,7 +70,7 @@ services:
     networks:
       - backend-net
 
-  # 2. ML engine — trains + serves the churn prediction model
+  # ML engine 
   ml_engine:
     build: ./services/ml_engine
     container_name: telco_ml_engine
@@ -86,7 +87,7 @@ services:
     networks:
       - backend-net
 
-  # 3. Dashboard — Streamlit, interactive charts
+  # Dashboard service
   dashboard:
     build:
       context: ./services/dashboard
