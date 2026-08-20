@@ -1,7 +1,7 @@
 import csv
 import random
 
-
+# For database input option
 NUM_RECORDS = 10000
 OUTPUT_FILE = "generated_customers.csv"
 
