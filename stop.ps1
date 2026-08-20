@@ -1,0 +1,2 @@
+# Stop
+docker compose down

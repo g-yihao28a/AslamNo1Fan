@@ -49,5 +49,27 @@ class Config:
         "DATABASE_URL": f"http://localhost:{DATABASE_PORT}",
     }
 
-
+    FEATURE_NAME_MAPPING = {
+    "tenure_in_months": "Tenure Months",
+    "tenure_months": "Tenure Months",
+    "monthly_charge": "Monthly Charges",
+    "monthly_charges": "Monthly Charges",
+    "total_charges": "Total Charges",
+    "gender": "Gender",
+    "senior_citizen": "Senior Citizen",
+    "partner": "Partner",
+    "dependents": "Dependents",
+    "phone_service": "Phone Service",
+    "multiple_lines": "Multiple Lines",
+    "internet_service": "Internet Service",
+    "online_security": "Online Security",
+    "online_backup": "Online Backup",
+    "device_protection": "Device Protection",
+    "tech_support": "Tech Support",
+    "streaming_tv": "Streaming TV",
+    "streaming_movies": "Streaming Movies",
+    "contract": "Contract",
+    "paperless_billing": "Paperless Billing",
+    "payment_method": "Payment Method",
+}
 config = Config()

@@ -14,26 +14,9 @@ tab_predict, tab_logs = st.tabs(
     ["Predict Churn", "Recent Predictions"]
 )
 
-FEATURE_OPTIONS = {
-    "Gender": ["Male", "Female"],
-    "Senior Citizen": ["Yes", "No"],
-    "Partner": ["Yes", "No"],
-    "Dependents": ["Yes", "No"],
-    "Phone Service": ["Yes", "No"],
-    "Internet Service": ["DSL", "Fiber optic", "No"],
-    "Contract": ["Month-to-month", "One year", "Two year"],
-    "Paperless Billing": ["Yes", "No"],
-    "Payment Method": [
-        "Electronic check",
-        "Mailed check",
-        "Bank transfer (automatic)",
-        "Credit card (automatic)",
-    ],
-}
+FEATURE_OPTIONS = config.FEATURE_OPTIONS
 
-# ---------------------------------------------------------------------------
-# Predict tab: interactive form that calls the ML engine (through the gateway)
-# ---------------------------------------------------------------------------
+# Predict tab: interactive form that calls the ML engine
 with tab_predict:
     st.subheader("Score a customer")
     st.caption("Sends the inputs to the ML engine's /predict endpoint live.")
@@ -116,9 +99,7 @@ with tab_predict:
         except requests.RequestException as exc:
             st.error(f"Could not reach the ML engine via the API gateway: {exc}")
 
-# ---------------------------------------------------------------------------
 # Logs tab: recent predictions written to inference_logs by the ML engine
-# ---------------------------------------------------------------------------
 with tab_logs:
     st.subheader("Recent prediction history")
     logs = data_access.load_inference_logs()
