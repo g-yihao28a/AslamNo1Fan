@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 NUM_RECORDS = 250
-OUTPUT_FILE = "Company_Data(For ML).csv"
+OUTPUT_FILE = "Company_Data(For ML Prediction).csv"
 
 np.random.seed(42)
 
