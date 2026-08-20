@@ -1,8 +1,10 @@
 import json
 import os
+import io
 
 import joblib
 import requests
+import pandas as pd
 from flask import Flask, jsonify, request
 
 from config import config
@@ -79,7 +81,6 @@ def train():
     except Exception as exc:
         # Always wrap error dictionaries in jsonify() to return a valid Flask response
         return jsonify({"error": str(exc)}), 500    
-    
 
 
 @app.route("/predict", methods=["POST"])
@@ -93,6 +94,36 @@ def predict():
     if not payload:
         return {"error": "Request body must be JSON."}, 400
 
+    # ---------------------------------------------------------------------------
+    # Fallback normalization: map snake_case and type variations to ALL_FEATURES
+    # ---------------------------------------------------------------------------
+    feature_fallbacks = {
+        "tenure_in_months": "Tenure Months",
+        "tenure_months": "Tenure Months",
+        "monthly_charge": "Monthly Charges",
+        "monthly_charges": "Monthly Charges",
+        "total_charges": "Total Charges",
+        "gender": "Gender",
+        "senior_citizen": "Senior Citizen",
+        "partner": "Partner",
+        "dependents": "Dependents",
+        "phone_service": "Phone Service",
+        "multiple_lines": "Multiple Lines",
+        "internet_service": "Internet Service",
+        "online_security": "Online Security",
+        "online_backup": "Online Backup",
+        "device_protection": "Device Protection",
+        "tech_support": "Tech Support",
+        "streaming_tv": "Streaming TV",
+        "streaming_movies": "Streaming Movies",
+        "contract": "Contract",
+        "paperless_billing": "Paperless Billing",
+        "payment_method": "Payment Method",
+    }
+    for k, v in list(payload.items()):
+        if k in feature_fallbacks and feature_fallbacks[k] not in payload:
+            payload[feature_fallbacks[k]] = v
+
     missing = [f for f in ALL_FEATURES if f not in payload]
     if missing:
         return {
@@ -102,7 +133,14 @@ def predict():
         }, 400
 
     row = {f: payload[f] for f in ALL_FEATURES}
-    import pandas as pd
+
+    # Numeric coercion for single row DataFrame
+    for num_col in ["Tenure Months", "Monthly Charges", "Total Charges"]:
+        if num_col in row and row[num_col] is not None:
+            try:
+                row[num_col] = float(row[num_col])
+            except (ValueError, TypeError):
+                row[num_col] = 0.0
 
     X = pd.DataFrame([row])
 
@@ -124,6 +162,100 @@ def predict():
             "model_version": model_version,
         }
     ), 200
+
+@app.route("/predict/batch", methods=["POST"])
+def predict_batch():
+    if _pipeline is None:
+        return jsonify({"error": "No trained model available yet. Call POST /train first."}), 503
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided (expected multipart field 'file')"}), 400
+
+    upload = request.files["file"]
+    filename = upload.filename.lower()
+
+    try:
+        if filename.endswith(".csv"):
+            df = pd.read_csv(upload.stream)
+        elif filename.endswith((".xlsx", ".xls")):
+            df = pd.read_excel(upload.stream)
+        else:
+            return jsonify({"error": "Unsupported file type. Use .csv, .xlsx, or .xls"}), 400
+
+        col_mapping = {
+            "tenure_in_months": "Tenure Months",
+            "tenure_months": "Tenure Months",
+            "monthly_charge": "Monthly Charges",
+            "monthly_charges": "Monthly Charges",
+            "total_charges": "Total Charges",
+            "gender": "Gender",
+            "senior_citizen": "Senior Citizen",
+            "partner": "Partner",
+            "dependents": "Dependents",
+            "phone_service": "Phone Service",
+            "multiple_lines": "Multiple Lines",
+            "internet_service": "Internet Service",
+            "online_security": "Online Security",
+            "online_backup": "Online Backup",
+            "device_protection": "Device Protection",
+            "tech_support": "Tech Support",
+            "streaming_tv": "Streaming TV",
+            "streaming_movies": "Streaming Movies",
+            "contract": "Contract",
+            "paperless_billing": "Paperless Billing",
+            "payment_method": "Payment Method",
+        }
+        df = df.rename(columns=col_mapping)
+
+        for col in ["Tenure Months", "Monthly Charges", "Total Charges"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+        missing = [c for c in ALL_FEATURES if c not in df.columns]
+        if missing:
+            return jsonify({"error": f"Uploaded dataset is missing required features: {missing}"}), 400
+
+        X = df[ALL_FEATURES]
+        probabilities = _pipeline.predict_proba(X)[:, 1]
+        predictions = _pipeline.predict(X)
+
+        cust_ids = df["customer_id"].tolist() if "customer_id" in df.columns else [f"ROW_{i+1}" for i in range(len(df))]
+        model_version = _metadata.get("model_version") if _metadata else None
+
+        results = []
+        for cid, prob, pred in zip(cust_ids, probabilities, predictions):
+            prob_float = float(round(prob, 4))
+            pred_bool = bool(pred)
+            risk = "High" if prob_float >= 0.7 else ("Medium" if prob_float >= 0.4 else "Low")
+
+            results.append({
+                "customer_id": cid,
+                "churn_probability": prob_float,
+                "probability": prob_float,
+                "predicted_churn": pred_bool,
+                "prediction": "Yes" if pred_bool else "No",
+                "risk_level": risk,
+                "model_version": model_version,
+            })
+
+        return jsonify({"predictions": results, "total_records": len(results)}), 200
+
+    except Exception as exc:
+        return jsonify({"error": f"Batch prediction failed: {str(exc)}"}), 500
+
+
+@app.route("/model/reload", methods=["POST"])
+def model_reload():
+    try:
+        _load_model()
+        return jsonify({
+            "status": "Model and metadata reloaded successfully",
+            "model_loaded": _pipeline is not None,
+            "version": _metadata.get("model_version") if _metadata else None,
+        }), 200
+    except Exception as exc:
+        return jsonify({"error": f"Reload failed: {str(exc)}"}), 500
+
 
 if __name__ == "__main__":
     print(f"ML Engine starting on http://localhost:{config.ML_ENGINE_PORT}")

@@ -1,11 +1,40 @@
 from flask import Flask, jsonify, request, redirect, render_template
 import requests
+import pandas as pd
+import io
 import os
 from config import config
 
 app = Flask(__name__)
 
 DATABASE_URL = config.SERVICES["DATABASE_URL"].rstrip("/")
+
+# ---------------------------------------------------------------------------
+# Feature mapping dictionary: maps database snake_case to ML engine Title Case
+# ---------------------------------------------------------------------------
+FEATURE_NAME_MAPPING = {
+    "tenure_in_months": "Tenure Months",
+    "tenure_months": "Tenure Months",
+    "monthly_charge": "Monthly Charges",
+    "monthly_charges": "Monthly Charges",
+    "total_charges": "Total Charges",
+    "gender": "Gender",
+    "senior_citizen": "Senior Citizen",
+    "partner": "Partner",
+    "dependents": "Dependents",
+    "phone_service": "Phone Service",
+    "multiple_lines": "Multiple Lines",
+    "internet_service": "Internet Service",
+    "online_security": "Online Security",
+    "online_backup": "Online Backup",
+    "device_protection": "Device Protection",
+    "tech_support": "Tech Support",
+    "streaming_tv": "Streaming TV",
+    "streaming_movies": "Streaming Movies",
+    "contract": "Contract",
+    "paperless_billing": "Paperless Billing",
+    "payment_method": "Payment Method",
+}
 
 
 def _proxy_to_database(path, method):
@@ -31,16 +60,19 @@ def _proxy_to_database(path, method):
             "details": str(e)
         }), 502
 
+
 ### Routing
 # Display html page when users visit base address
 @app.route('/')
 def home():
     return render_template('index.html')
 
+
 # Display html page when users visit base address
 @app.route('/database')
 def database_gateway():
     return render_template('database_gateway.html')
+
 
 # ---------------------------------------------------------------------------
 # Proxy routes: forward customer / inference-log requests from the dashboard
@@ -50,6 +82,7 @@ def database_gateway():
 def database_customers():
     return _proxy_to_database("customers", request.method)
 
+
 @app.route("/database/customers/full", methods=["GET"])
 def database_customers_full():
     """Merged view: all four customer tables joined into one flat record
@@ -57,9 +90,11 @@ def database_customers_full():
     microservice should call to pull the whole dataset at once."""
     return _proxy_to_database("customers/full", request.method)
 
+
 @app.route("/database/customers/full/<customer_id>", methods=["GET"])
 def database_customer_full(customer_id):
     return _proxy_to_database(f"customers/full/{customer_id}", request.method)
+
 
 @app.route("/database/customers/upload", methods=["POST"])
 def database_customers_upload():
@@ -83,18 +118,22 @@ def database_customers_upload():
             "details": str(e)
         }), 502
 
+
 @app.route("/database/customers/<customer_id>", methods=["GET", "PUT", "DELETE"])
 def database_customer(customer_id):
     return _proxy_to_database(f"customers/{customer_id}", request.method)
+
 
 @app.route("/database/logs", methods=["GET", "POST"])
 def database_logs():
     return _proxy_to_database("logs", request.method)
 
+
 # Display html page when users visit base address
 @app.route('/ml')
 def ml_gateway():
     return render_template('ml_gateway.html')
+
 
 # Train ml model
 @app.route('/ml_train')
@@ -108,17 +147,97 @@ def train_model():
         print(f"Error ({response.status_code}):", response.json())
         return None
 
+
+# Iterate through CSV rows and send single prediction calls
+@app.route("/ml/predict_csv_single", methods=["POST"])
+def predict_csv_single():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    upload = request.files["file"]
+    if not upload.filename.lower().endswith(".csv"):
+        return jsonify({"error": "Only CSV files are supported for single prediction iteration"}), 400
+
+    prediction_url = config.SERVICES.get("ML_ENGINE_URL", config.SERVICES.get("PREDICTION_SERVICE_URL", "")).rstrip("/")
+    if not prediction_url:
+        prediction_url = config.SERVICES["ML_ENGINE_URL"].rstrip("/")
+
+    try:
+        df = pd.read_csv(upload.stream)
+        df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
+        df = df.where(pd.notnull(df), None)
+        records = df.to_dict(orient="records")
+
+        results = []
+        for record in records:
+            # Build payload mapped with Title Case features required by ml_engine/predict
+            model_payload = {}
+            for k, v in record.items():
+                if k in FEATURE_NAME_MAPPING:
+                    model_payload[FEATURE_NAME_MAPPING[k]] = v
+                else:
+                    model_payload[k] = v
+
+            try:
+                # Issue individual single prediction request
+                pred_resp = requests.post(
+                    f"{prediction_url}/predict",
+                    json=model_payload,
+                    timeout=10,
+                )
+                if pred_resp.status_code == 200:
+                    pred_data = pred_resp.json()
+                    item_result = {
+                        "customer_id": record.get("customer_id", "N/A"),
+                        "prediction": pred_data.get("predicted_churn", pred_data.get("prediction", "No")),
+                        "probability": pred_data.get("churn_probability", pred_data.get("probability", None)),
+                        "raw_response": pred_data,
+                    }
+                    results.append(item_result)
+                else:
+                    results.append({
+                        "customer_id": record.get("customer_id", "N/A"),
+                        "prediction": "Error",
+                        "probability": None,
+                        "error": pred_resp.text,
+                    })
+            except requests.RequestException as item_err:
+                results.append({
+                    "customer_id": record.get("customer_id", "N/A"),
+                    "prediction": "Unreachable",
+                    "probability": None,
+                    "error": str(item_err),
+                })
+
+        # Save inference run to database microservice logs
+        try:
+            requests.post(
+                f"{DATABASE_URL}/logs",
+                json={"type": "csv_single_prediction_batch", "results": results},
+                timeout=10,
+            )
+        except requests.RequestException:
+            pass
+
+        return jsonify({"results": results}), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to parse CSV: {str(e)}"}), 400
+
+
 # Redirect to prediction service
 @app.route("/ml_prediction", methods=["GET"])
 def redirect_to_prediction():
     external_prediction_url = config.EXTERNAL_URLS["ML_PREDICTION_URL"]
     return redirect(external_prediction_url, code=302)
 
+
 # Redirect to dashboard service
 @app.route("/dashboard", methods=["GET"])
 def redirect_to_dashboard():
     external_dashboard_url = config.EXTERNAL_URLS["DASHBOARD_URL"]
     return redirect(external_dashboard_url, code=302)
+
 
 # Debug to check communication between services
 @app.route("/health", methods=["GET"])
@@ -137,7 +256,7 @@ def health_check():
 
         try:
             response = requests.get(health_endpoint, timeout=2.0)
-            
+
             if response.status_code == 200:
                 service_statuses[name] = "UP"
             else:
@@ -151,8 +270,9 @@ def health_check():
     status_code = 200 if all_healthy else 503
     return {
         "status": "healthy" if all_healthy else "degraded",
-        "services": service_statuses
+        "services": service_statuses,
     }, status_code
+
 
 if __name__ == "__main__":
     print(f"Flask API Gateway starting on http://0.0.0.0:{config.GATEWAY_PORT}")

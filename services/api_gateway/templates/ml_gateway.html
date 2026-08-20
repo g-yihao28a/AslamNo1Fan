@@ -3,45 +3,251 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Gateway</title>
+  <title>Machine Learning Gateway</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-6 text-center antialiased">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-6 antialiased">
 
-  <main class="max-w-md w-full space-y-6">
+  <main class="max-w-4xl w-full space-y-6 my-8 text-center">
     <!-- Header Section -->
-    <header class="space-y-2">
+    <header class="space-y-1">
       <h1 class="text-3xl font-bold tracking-tight text-white">Machine Learning Gateway</h1>
-      <p class="text-slate-400 text-sm">Placeholder</p>
+      <p class="text-slate-400 text-sm">Model Retraining & Iterative Single Predictions via CSV</p>
     </header>
 
-    <!-- Action Button -->
-    <a 
-      href="./ml_train" 
-      class="inline-flex items-center justify-center w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
-    >
-      Train Machine Learning Model
-    </a>
-    
-    <!-- Action Button -->
-    <a 
-      href="./ml_prediction" 
-      class="inline-flex items-center justify-center w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
-    >
-      Customer Churn Prediction
-    </a>
+    <!-- Navigation & Retrain Actions -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <button 
+        id="trainModelBtn"
+        class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
+      >
+        Train / Retrain Model
+      </button>
+      
+      <a 
+        href="/ml_prediction" 
+        class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
+      >
+        Manual Prediction UI
+      </a>
 
-    <!-- Action Button -->
-     <!-- Return to home-->
-    <a 
-      href="./" 
-      class="inline-flex items-center justify-center w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
-    >
-      Return to homepage
-    </a>
+      <a 
+        href="/" 
+        class="inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-4 py-3 rounded-xl transition-all border border-slate-700 active:scale-[0.98]"
+      >
+        Return to Homepage
+      </a>
+    </div>
 
+    <!-- Retrain Feedback Box -->
+    <div id="trainFeedback" class="hidden text-xs p-3 rounded-xl text-left font-mono"></div>
+
+    <!-- CSV Single-Prediction Execution Section -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5 text-left">
+      <div class="border-b border-slate-800 pb-3">
+        <h2 class="text-lg font-semibold text-indigo-400">Run Single Predictions from CSV</h2>
+        <p class="text-xs text-slate-400">Upload a <code>.csv</code> file. Each customer row will be parsed and sent individually to the single prediction service.</p>
+      </div>
+
+      <form id="csvPredictForm" class="space-y-4">
+        <div>
+          <label for="csvFile" class="block text-xs font-medium text-slate-300 mb-1">Customer Dataset (.csv)</label>
+          <input 
+            type="file" 
+            id="csvFile" 
+            name="file" 
+            accept=".csv" 
+            class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-950 file:text-indigo-300 hover:file:bg-indigo-900 cursor-pointer bg-slate-950 border border-slate-700 rounded-xl p-1.5 focus:outline-none transition"
+            required
+          >
+        </div>
+
+        <div id="predictFeedback" class="hidden text-xs p-3 rounded-xl"></div>
+
+        <button 
+          type="submit" 
+          id="predictSubmitBtn"
+          class="w-full inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-3 rounded-xl transition shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
+        >
+          Execute Single Predictions Row-by-Row
+        </button>
+      </form>
+
+      <!-- Live Prediction Results Table -->
+      <div id="resultsWrapper" class="hidden space-y-3 pt-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-slate-200">Execution Log & Scored Records</h3>
+          <button 
+            id="downloadResultsBtn" 
+            class="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 px-3 py-1.5 rounded-lg transition"
+          >
+            Export Results (.csv)
+          </button>
+        </div>
+
+        <div class="overflow-x-auto max-h-80 rounded-xl border border-slate-800 bg-slate-950">
+          <table class="w-full text-xs text-left text-slate-300">
+            <thead class="text-[11px] uppercase bg-slate-900 text-slate-400 border-b border-slate-800 sticky top-0">
+              <tr>
+                <th class="px-4 py-2.5">Customer ID</th>
+                <th class="px-4 py-2.5">Churn Outcome</th>
+                <th class="px-4 py-2.5">Score / Probability</th>
+                <th class="px-4 py-2.5">Status</th>
+              </tr>
+            </thead>
+            <tbody id="resultsTableBody" class="divide-y divide-slate-800/60 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   </main>
 
+  <script>
+    let executedResults = [];
+
+    // 1. Trigger Model Retraining
+    document.getElementById('trainModelBtn').addEventListener('click', async () => {
+      const feedback = document.getElementById('trainFeedback');
+      const btn = document.getElementById('trainModelBtn');
+
+      btn.disabled = true;
+      btn.innerText = 'Training Model...';
+      feedback.className = 'text-xs p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 block';
+      feedback.innerText = 'Triggering retraining pipeline on ML Engine...';
+
+      try {
+        const res = await fetch('/ml_train');
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Training failed');
+
+        feedback.className = 'text-xs p-3 rounded-xl bg-indigo-950/80 border border-indigo-800 text-indigo-300 block';
+        feedback.innerHTML = `<div>Model retrained successfully.</div><pre class="mt-1 text-[11px] text-slate-400 overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (err) {
+        feedback.className = 'text-xs p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 block';
+        feedback.innerText = `Training Error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Train / Retrain Model';
+      }
+    });
+
+    // 2. Upload CSV and process single predictions via gateway
+    document.getElementById('csvPredictForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const feedback = document.getElementById('predictFeedback');
+      const submitBtn = document.getElementById('predictSubmitBtn');
+      const fileInput = document.getElementById('csvFile');
+      const resultsWrapper = document.getElementById('resultsWrapper');
+      const tbody = document.getElementById('resultsTableBody');
+
+      if (!fileInput.files[0]) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Sending records to Single Prediction Service...';
+      feedback.classList.add('hidden');
+      resultsWrapper.classList.add('hidden');
+      tbody.innerHTML = '';
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const res = await fetch('/ml/predict_csv_single', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Failed to process file');
+
+        const results = data.results || [];
+        executedResults = results;
+
+        if (results.length === 0) {
+          throw new Error('No records were processed from the CSV.');
+        }
+
+        // Render records into output table
+        results.forEach(item => {
+          const raw = item.raw_response || {};
+
+          // Extract probability from any key provided across services
+          let probVal = null;
+          if (item.probability !== null && item.probability !== undefined) {
+            probVal = item.probability;
+          } else if (raw.churn_probability !== undefined && raw.churn_probability !== null) {
+            probVal = raw.churn_probability;
+          } else if (raw.probability !== undefined && raw.probability !== null) {
+            probVal = raw.probability;
+          } else if (raw.churn_score !== undefined && raw.churn_score !== null) {
+            probVal = raw.churn_score;
+          }
+
+          let probText = 'N/A';
+          let isChurn = false;
+
+          if (probVal !== null) {
+            const numericProb = parseFloat(probVal);
+            if (!isNaN(numericProb)) {
+              const displayPct = numericProb <= 1.0 ? (numericProb * 100) : numericProb;
+              probText = displayPct.toFixed(1) + '%';
+              isChurn = displayPct >= 50.0;
+            }
+          }
+
+          // Extract prediction boolean/label
+          const predVal = item.prediction ?? raw.predicted_churn ?? raw.prediction ?? raw.churn;
+          if (predVal === true || predVal === 'Yes' || predVal === 1 || predVal === '1') {
+            isChurn = true;
+          } else if (predVal === false || predVal === 'No' || predVal === 0 || predVal === '0') {
+            isChurn = false;
+          }
+
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-slate-900/50 transition';
+          row.innerHTML = `
+            <td class="px-4 py-2 font-medium text-slate-200">${item.customer_id || raw.customer_id || 'N/A'}</td>
+            <td class="px-4 py-2">
+              <span class="px-2 py-0.5 rounded text-[11px] ${isChurn ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}">
+                ${isChurn ? 'Churn' : 'Stay'}
+              </span>
+            </td>
+            <td class="px-4 py-2 text-slate-300">${probText}</td>
+            <td class="px-4 py-2 text-emerald-400">Processed</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        resultsWrapper.classList.remove('hidden');
+        feedback.className = 'text-xs p-3 rounded-xl bg-indigo-950/80 border border-indigo-800 text-indigo-300 block';
+        feedback.innerText = `Successfully processed ${results.length} rows as individual single predictions.`;
+      } catch (err) {
+        feedback.className = 'text-xs p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 block';
+        feedback.innerText = `Execution Error: ${err.message}`;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Execute Single Predictions Row-by-Row';
+      }
+    });
+
+    // 3. Export Results as CSV
+    document.getElementById('downloadResultsBtn').addEventListener('click', () => {
+      if (!executedResults.length) return;
+
+      const headers = Object.keys(executedResults[0]).join(',');
+      const rows = executedResults.map(row => Object.values(row).map(val => `"${val}"`).join(','));
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', 'single_predictions_output.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  </script>
 </body>
 </html>
