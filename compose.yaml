@@ -55,6 +55,13 @@ services:
     ports:
       - "5000:5000"
 
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=2)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
     depends_on:
       database:
         condition: service_healthy
@@ -74,7 +81,7 @@ services:
       - "./data/telco_data:/data:ro"
       - ml_model_data:/app/model
     depends_on:
-      database:
+      database_service:
         condition: service_healthy
     networks:
       - backend-net
@@ -88,13 +95,8 @@ services:
       - "${DASHBOARD_PORT:-8501}:${DASHBOARD_PORT:-8501}"
     environment:
       DASHBOARD_PORT: ${DASHBOARD_PORT:-8501}
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-telco_churn_db}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
     depends_on:
-      database:
+      database_service:
         condition: service_healthy
     networks:
       - backend-net
@@ -108,8 +110,12 @@ services:
     env_file:
       - .env
     depends_on:
-      - ml_engine
-      - dashboard
+      ml_engine:
+        condition: service_started
+      dashboard:
+        condition: service_started
+      database_service:
+        condition: service_healthy
     networks:
       - backend-net
 
@@ -122,7 +128,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - ml_engine
+      ml_engine:
+        condition: service_started
+      database_service:
+        condition: service_healthy
     networks:
       - backend-net
 

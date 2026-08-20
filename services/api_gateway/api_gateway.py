@@ -5,6 +5,32 @@ from config import config
 
 app = Flask(__name__)
 
+DATABASE_URL = config.SERVICES["DATABASE_URL"].rstrip("/")
+
+
+def _proxy_to_database(path, method):
+    """Forward a request to the database microservice and relay its response.
+
+    This is what lets the dashboard and ml model microservices reach the
+    database through the gateway instead of calling it directly: they hit
+    `/database/...` on the gateway, and the gateway relays the request/
+    response to and from the database microservice.
+    """
+    try:
+        response = requests.request(
+            method,
+            f"{DATABASE_URL}/{path}",
+            params=request.args,
+            json=request.get_json(silent=True),
+            timeout=5,
+        )
+        return jsonify(response.json()), response.status_code
+    except requests.exceptions.RequestException as e:
+        return jsonify({
+            "error": "Database microservice unreachable",
+            "details": str(e)
+        }), 502
+
 ### Routing
 # Display html page when users visit base address
 @app.route('/')
@@ -15,6 +41,55 @@ def home():
 @app.route('/database')
 def database_gateway():
     return render_template('database_gateway.html')
+
+# ---------------------------------------------------------------------------
+# Proxy routes: forward customer / inference-log requests from the dashboard
+# and ml model microservices through to the database microservice.
+# ---------------------------------------------------------------------------
+@app.route("/database/customers", methods=["GET", "POST"])
+def database_customers():
+    return _proxy_to_database("customers", request.method)
+
+@app.route("/database/customers/full", methods=["GET"])
+def database_customers_full():
+    """Merged view: all four customer tables joined into one flat record
+    per customer, in a single request - this is what the ML model
+    microservice should call to pull the whole dataset at once."""
+    return _proxy_to_database("customers/full", request.method)
+
+@app.route("/database/customers/full/<customer_id>", methods=["GET"])
+def database_customer_full(customer_id):
+    return _proxy_to_database(f"customers/full/{customer_id}", request.method)
+
+@app.route("/database/customers/upload", methods=["POST"])
+def database_customers_upload():
+    """Forward a CSV file upload to the database microservice's bulk-import
+    route. Kept separate from _proxy_to_database because file uploads are
+    multipart/form-data, not JSON."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided (expected multipart field 'file')"}), 400
+
+    upload = request.files["file"]
+    try:
+        response = requests.post(
+            f"{DATABASE_URL}/customers/upload",
+            files={"file": (upload.filename, upload.stream, upload.mimetype)},
+            timeout=30,
+        )
+        return jsonify(response.json()), response.status_code
+    except requests.exceptions.RequestException as e:
+        return jsonify({
+            "error": "Database microservice unreachable",
+            "details": str(e)
+        }), 502
+
+@app.route("/database/customers/<customer_id>", methods=["GET", "PUT", "DELETE"])
+def database_customer(customer_id):
+    return _proxy_to_database(f"customers/{customer_id}", request.method)
+
+@app.route("/database/logs", methods=["GET", "POST"])
+def database_logs():
+    return _proxy_to_database("logs", request.method)
 
 # Display html page when users visit base address
 @app.route('/ml')
