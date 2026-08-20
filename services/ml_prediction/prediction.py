@@ -16,9 +16,7 @@ tab_predict, tab_logs = st.tabs(
 
 FEATURE_OPTIONS = config.FEATURE_OPTIONS
 
-# ---------------------------------------------------------------------------
-# Predict tab: interactive form that calls the ML engine (through the gateway)
-# ---------------------------------------------------------------------------
+# Predict tab: interactive form that calls the ML engine
 with tab_predict:
     st.subheader("Score a customer")
     st.caption("Sends the inputs to the ML engine's /predict endpoint live.")

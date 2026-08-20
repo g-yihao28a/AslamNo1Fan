@@ -37,13 +37,13 @@ def _proxy_to_database(path, method):
 
 
 ### Routing
-# Display html page when users visit base address
+# Home page
 @app.route('/')
 def home():
     return render_template('index.html')
 
 
-# Display html page when users visit base address
+# Database page
 @app.route('/database')
 def database_gateway():
     return render_template('database_gateway.html')
@@ -104,7 +104,7 @@ def database_logs():
     return _proxy_to_database("logs", request.method)
 
 
-# Display html page when users visit base address
+# ML Gateway
 @app.route('/ml')
 def ml_gateway():
     return render_template('ml_gateway.html')
