@@ -17,39 +17,36 @@
     </header>
 
     <!-- Navigation & Retrain Actions -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <!-- Trigger model training -->
       <button 
         id="trainModelBtn"
         class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
       >
-        Train / Retrain Model
+        Train/Retrain Model
       </button>
       
+      <!-- Redirect to prediction service -->
       <a 
         href="/ml_prediction" 
         class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
       >
-        Manual Prediction UI
-      </a>
-
-      <a 
-        href="/" 
-        class="inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-4 py-3 rounded-xl transition-all border border-slate-700 active:scale-[0.98]"
-      >
-        Return to Homepage
+        Manually Input Prediction
       </a>
     </div>
 
     <!-- Retrain Feedback Box -->
+     <!-- Empty at first, shows model training feedback -->
     <div id="trainFeedback" class="hidden text-xs p-3 rounded-xl text-left font-mono"></div>
 
     <!-- CSV Single-Prediction Execution Section -->
     <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5 text-left">
       <div class="border-b border-slate-800 pb-3">
         <h2 class="text-lg font-semibold text-indigo-400">Run Single Predictions from CSV</h2>
-        <p class="text-xs text-slate-400">Upload a <code>.csv</code> file. Each customer row will be parsed and sent individually to the single prediction service.</p>
+        <p class="text-xs text-slate-400">Upload a .csv file. Each customer row will be parsed and sent individually to the single prediction service.</p>
       </div>
 
+      <!-- Input csv file area -->
       <form id="csvPredictForm" class="space-y-4">
         <div>
           <label for="csvFile" class="block text-xs font-medium text-slate-300 mb-1">Customer Dataset (.csv)</label>
@@ -65,6 +62,7 @@
 
         <div id="predictFeedback" class="hidden text-xs p-3 rounded-xl"></div>
 
+        <!-- Submit button -->
         <button 
           type="submit" 
           id="predictSubmitBtn"
@@ -74,7 +72,7 @@
         </button>
       </form>
 
-      <!-- Live Prediction Results Table -->
+      <!-- Prediction Results Table -->
       <div id="resultsWrapper" class="hidden space-y-3 pt-2">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold text-slate-200">Execution Log & Scored Records</h3>
@@ -89,6 +87,7 @@
         <div class="overflow-x-auto max-h-80 rounded-xl border border-slate-800 bg-slate-950">
           <table class="w-full text-xs text-left text-slate-300">
             <thead class="text-[11px] uppercase bg-slate-900 text-slate-400 border-b border-slate-800 sticky top-0">
+              <!-- Header row -->
               <tr>
                 <th class="px-4 py-2.5">Customer ID</th>
                 <th class="px-4 py-2.5">Churn Outcome</th>
@@ -96,58 +95,77 @@
                 <th class="px-4 py-2.5">Status</th>
               </tr>
             </thead>
+            <!-- Rest of table -->
             <tbody id="resultsTableBody" class="divide-y divide-slate-800/60 font-mono"></tbody>
           </table>
         </div>
       </div>
+
     </section>
+
+    <!-- Navigation Footer -->
+    <div class="flex items-center justify-between pt-2 px-2">
+      <a href="./" class="text-xs text-slate-400 hover:text-slate-200 transition">
+        &larr; Return to homepage
+      </a>
+    </div>
   </main>
 
   <script>
     let executedResults = [];
 
-    // 1. Trigger Model Retraining
+    // Trigger Model Retraining
     document.getElementById('trainModelBtn').addEventListener('click', async () => {
+      // define variables
       const feedback = document.getElementById('trainFeedback');
       const btn = document.getElementById('trainModelBtn');
 
+      // disable button
       btn.disabled = true;
+      // replace button text
       btn.innerText = 'Training Model...';
+      
+      // show hidden feedback text
       feedback.className = 'text-xs p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 block';
       feedback.innerText = 'Triggering retraining pipeline on ML Engine...';
 
       try {
-        const res = await fetch('/ml_train');
+        const res = await fetch('/ml/train');
         const data = await res.json();
 
         if (!res.ok) throw new Error(data.error || 'Training failed');
 
         feedback.className = 'text-xs p-3 rounded-xl bg-indigo-950/80 border border-indigo-800 text-indigo-300 block';
+        // when response
         feedback.innerHTML = `<div>Model retrained successfully.</div><pre class="mt-1 text-[11px] text-slate-400 overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>`;
       } catch (err) {
+        // if error
         feedback.className = 'text-xs p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 block';
         feedback.innerText = `Training Error: ${err.message}`;
       } finally {
+        // re-enable button after
         btn.disabled = false;
         btn.innerText = 'Train / Retrain Model';
       }
     });
 
-    // 2. Upload CSV and process single predictions via gateway
+    // Upload CSV file for prediction
     document.getElementById('csvPredictForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      //define variables
       const feedback = document.getElementById('predictFeedback');
       const submitBtn = document.getElementById('predictSubmitBtn');
       const fileInput = document.getElementById('csvFile');
       const resultsWrapper = document.getElementById('resultsWrapper');
       const tbody = document.getElementById('resultsTableBody');
 
+      // stop if no file
       if (!fileInput.files[0]) return;
 
       submitBtn.disabled = true;
       submitBtn.innerText = 'Sending records to Single Prediction Service...';
       feedback.classList.add('hidden');
-      resultsWrapper.classList.add('hidden');
+      //resultsWrapper.classList.add('hidden');
       tbody.innerHTML = '';
 
       const formData = new FormData();
@@ -158,6 +176,7 @@
           method: 'POST',
           body: formData
         });
+
         const data = await res.json();
 
         if (!res.ok) throw new Error(data.error || 'Failed to process file');
@@ -232,21 +251,40 @@
       }
     });
 
-    // 3. Export Results as CSV
+    // Export Results as CSV
     document.getElementById('downloadResultsBtn').addEventListener('click', () => {
       if (!executedResults.length) return;
 
-      const headers = Object.keys(executedResults[0]).join(',');
-      const rows = executedResults.map(row => Object.values(row).map(val => `"${val}"`).join(','));
-      const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+      // Filter out key/value pairs where the value is a nested object
+      const cleanRow = (row) => {
+        const cleaned = {};
+        for (const [key, val] of Object.entries(row)) {
+          if (typeof val === 'object' && val !== null) {
+            // Skip nested objects entirely, such as the raw json response
+            continue; 
+          } else {
+            // Escape quotes inside string values for safe CSV formatting
+            cleaned[key] = String(val ?? '').replace(/"/g, '""');
+          }
+        }
+        return cleaned;
+      };
 
-      const encodedUri = encodeURI(csvContent);
+      const cleanedData = executedResults.map(cleanRow);
+      const headers = Object.keys(cleanedData[0]).join(',');
+      const rows = cleanedData.map(row => Object.values(row).map(val => `"${val}"`).join(','));
+      
+      // Use Blob & URL.createObjectURL instead of data URI (prevents URI length limits on large files)
+      const csvBlob = new Blob([[headers, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(csvBlob);
+
       const link = document.createElement('a');
-      link.setAttribute('href', encodedUri);
+      link.setAttribute('href', url);
       link.setAttribute('download', 'single_predictions_output.csv');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     });
   </script>
 </body>

@@ -1,5 +1,5 @@
 services:
-  # 1. Database — Postgres, auto-loads schema from init_scripts/ on first boot
+  # Internal Database
   database:
     build: 
       context: ./services/database
@@ -21,8 +21,8 @@ services:
     networks:
       - backend-net
 
-
-  # One-off job: loads the real Excel data into the database tables.
+  # Database loader
+  # One-off job: loads the Excel data into the database tables
   # Run explicitly with: docker compose run --rm db_loader
   db_loader:
     build: ./services/database/loader
@@ -41,7 +41,10 @@ services:
         condition: service_healthy
     networks:
       - backend-net
-
+    profiles:
+      - tools
+  
+  # Database service (to interact with internal database)
   database_service:
     build: ./services/database/api
     container_name: telco_database_service
@@ -53,13 +56,13 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
 
     ports:
-      - "5000:5000"
+      - "${DATABASE_PORT:-5000}:${DATABASE_PORT:-5000}"
 
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=2)"]
-      interval: 5s
+      interval: 60s
       timeout: 5s
-      retries: 10
+      retries: 5
       start_period: 20s
 
     depends_on:
@@ -69,7 +72,7 @@ services:
     networks:
       - backend-net
 
-  # 2. ML engine — trains + serves the churn prediction model
+  # ML engine
   ml_engine:
     build: ./services/ml_engine
     container_name: telco_ml_engine
@@ -86,7 +89,23 @@ services:
     networks:
       - backend-net
 
-  # 3. Dashboard — Streamlit, interactive charts
+  #  Prediction service
+  ml_prediction:
+    build: ./services/ml_prediction
+    container_name: telco_ml_prediction
+    ports:
+      - "${ML_PREDICTION_PORT:-8011}:${ML_PREDICTION_PORT:-8011}"
+    env_file:
+      - .env
+    depends_on:
+      ml_engine:
+        condition: service_started
+      database_service:
+        condition: service_healthy
+    networks:
+      - backend-net
+      
+  # Dashboard
   dashboard:
     build:
       context: ./services/dashboard
@@ -113,22 +132,6 @@ services:
       ml_engine:
         condition: service_started
       dashboard:
-        condition: service_started
-      database_service:
-        condition: service_healthy
-    networks:
-      - backend-net
-
-  #  Prediction service
-  ml_prediction:
-    build: ./services/ml_prediction
-    container_name: telco_ml_prediction
-    ports:
-      - "${ML_PREDICTION_PORT:-8011}:${ML_PREDICTION_PORT:-8011}"
-    env_file:
-      - .env
-    depends_on:
-      ml_engine:
         condition: service_started
       database_service:
         condition: service_healthy

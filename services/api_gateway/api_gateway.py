@@ -7,34 +7,9 @@ from config import config
 
 app = Flask(__name__)
 
-DATABASE_URL = config.SERVICES["DATABASE_URL"].rstrip("/")
-
-# ---------------------------------------------------------------------------
-# Feature mapping dictionary: maps database snake_case to ML engine Title Case
-# ---------------------------------------------------------------------------
-FEATURE_NAME_MAPPING = {
-    "tenure_in_months": "Tenure Months",
-    "tenure_months": "Tenure Months",
-    "monthly_charge": "Monthly Charges",
-    "monthly_charges": "Monthly Charges",
-    "total_charges": "Total Charges",
-    "gender": "Gender",
-    "senior_citizen": "Senior Citizen",
-    "partner": "Partner",
-    "dependents": "Dependents",
-    "phone_service": "Phone Service",
-    "multiple_lines": "Multiple Lines",
-    "internet_service": "Internet Service",
-    "online_security": "Online Security",
-    "online_backup": "Online Backup",
-    "device_protection": "Device Protection",
-    "tech_support": "Tech Support",
-    "streaming_tv": "Streaming TV",
-    "streaming_movies": "Streaming Movies",
-    "contract": "Contract",
-    "paperless_billing": "Paperless Billing",
-    "payment_method": "Payment Method",
-}
+INTERNAL_DATABASE_URL = config.SERVICES["DATABASE_URL"].rstrip("/")
+INTERNAL_ML_ENGINE_URL = config.SERVICES["ML_ENGINE_URL"].rstrip("/")
+FEATURE_NAME_MAPPING = config.FEATURE_NAME_MAPPING
 
 
 def _proxy_to_database(path, method):
@@ -48,7 +23,7 @@ def _proxy_to_database(path, method):
     try:
         response = requests.request(
             method,
-            f"{DATABASE_URL}/{path}",
+            f"{INTERNAL_DATABASE_URL}/{path}",
             params=request.args,
             json=request.get_json(silent=True),
             timeout=5,
@@ -107,7 +82,7 @@ def database_customers_upload():
     upload = request.files["file"]
     try:
         response = requests.post(
-            f"{DATABASE_URL}/customers/upload",
+            f"{INTERNAL_DATABASE_URL}/customers/upload",
             files={"file": (upload.filename, upload.stream, upload.mimetype)},
             timeout=30,
         )
@@ -136,9 +111,9 @@ def ml_gateway():
 
 
 # Train ml model
-@app.route('/ml_train')
+@app.route('/ml/train')
 def train_model():
-    response = requests.post(f'{config.SERVICES["ML_ENGINE_URL"].rstrip("/")}/train')
+    response = requests.post(f'{INTERNAL_ML_ENGINE_URL}/train')
     if response.status_code == 200:
         print("Model retrained successfully:")
         metadata = response.json()
@@ -151,16 +126,15 @@ def train_model():
 # Iterate through CSV rows and send single prediction calls
 @app.route("/ml/predict_csv_single", methods=["POST"])
 def predict_csv_single():
+    # Check there is a file
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
 
     upload = request.files["file"]
+
+    # Check is csv file
     if not upload.filename.lower().endswith(".csv"):
         return jsonify({"error": "Only CSV files are supported for single prediction iteration"}), 400
-
-    prediction_url = config.SERVICES.get("ML_ENGINE_URL", config.SERVICES.get("PREDICTION_SERVICE_URL", "")).rstrip("/")
-    if not prediction_url:
-        prediction_url = config.SERVICES["ML_ENGINE_URL"].rstrip("/")
 
     try:
         df = pd.read_csv(upload.stream)
@@ -180,11 +154,7 @@ def predict_csv_single():
 
             try:
                 # Issue individual single prediction request
-                pred_resp = requests.post(
-                    f"{prediction_url}/predict",
-                    json=model_payload,
-                    timeout=10,
-                )
+                pred_resp = requests.post(f"{INTERNAL_ML_ENGINE_URL}/predict", json=model_payload, timeout=10,)
                 if pred_resp.status_code == 200:
                     pred_data = pred_resp.json()
                     item_result = {
@@ -212,7 +182,7 @@ def predict_csv_single():
         # Save inference run to database microservice logs
         try:
             requests.post(
-                f"{DATABASE_URL}/logs",
+                f"{INTERNAL_DATABASE_URL}/logs",
                 json={"type": "csv_single_prediction_batch", "results": results},
                 timeout=10,
             )
