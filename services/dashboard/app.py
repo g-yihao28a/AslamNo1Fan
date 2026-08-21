@@ -19,6 +19,28 @@ st.title("📊 Telco Customer Churn Dashboard")
 tab_overview,  tab_custom = st.tabs(
     ["Overview",  "Custom Charts"]
 )
+# ---------------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------------
+def has_cols(df, cols):
+    """True if every column in `cols` exists in `df`."""
+    return all(c in df.columns for c in cols)
+
+
+def churn_rate_by(df, group_col):
+    """Return a 2-col dataframe: group_col, churn_rate (%)."""
+    out = df.groupby(group_col)["churn_value"].mean().reset_index()
+    out["churn_value"] = out["churn_value"] * 100
+    return out.rename(columns={"churn_value": "Churn rate (%)"})
+
+
+def stacked_100_by(df, group_col, label_col="churn_label"):
+    """Return counts of churned/retained per group_col, normalized to 100%."""
+    counts = df.groupby([group_col, label_col]).size().reset_index(name="count")
+    totals = counts.groupby(group_col)["count"].transform("sum")
+    counts["pct"] = counts["count"] / totals * 100
+    return counts
+
 
 # ---------------------------------------------------------------------------
 # Overview tab: interactive filters + KPIs + charts, all backed by live DB data
@@ -89,93 +111,276 @@ with tab_overview:
         col3.metric("Avg. CLTV", f"{avg_cltv:,.0f}")
         col4.metric("Avg. tenure (months)", f"{avg_tenure:.1f}")
 
+        # -------------------------------------------------------------
+        # 1. Health & Trend Overview — KPI cards
+        # -------------------------------------------------------------
+        col1, col2, col3, col4 = st.columns(4)
+        total_customers = len(filtered)
+        churn_rate = filtered["churn_value"].mean() * 100 if total_customers else 0
+
+        col1.metric("Customers", f"{total_customers:,}")
+        col2.metric("Churn rate", f"{churn_rate:.1f}%")
+
+        if "cltv" in filtered.columns:
+            avg_cltv = filtered["cltv"].mean() if total_customers else 0
+            col3.metric("Avg. CLTV", f"{avg_cltv:,.0f}")
+        else:
+            col3.metric("Avg. CLTV", "n/a")
+
+        if "tenure_in_months" in filtered.columns:
+            avg_tenure = filtered["tenure_in_months"].mean() if total_customers else 0
+            col4.metric("Avg. tenure (months)", f"{avg_tenure:.1f}")
+        else:
+            col4.metric("Avg. tenure (months)", "n/a")
+
         st.divider()
 
+        # -------------------------------------------------------------
+        # 2. Feature importance — loaded from a precomputed CSV if present
+        #    (e.g. output of a feature_importance_results.csv run offline)
+        # -------------------------------------------------------------
+        try:
+            fi = pd.read_csv("feature_importance_results.csv", index_col=0)
+            if "Permutation" in fi.columns:
+                top_fi = fi["Permutation"].sort_values(ascending=True).tail(10)
+                fig_fi = px.bar(
+                    top_fi,
+                    x=top_fi.values,
+                    y=top_fi.index,
+                    orientation="h",
+                    labels={"x": "Permutation importance", "y": "Feature"},
+                    title="Top 10 features driving churn (permutation importance)",
+                )
+                st.plotly_chart(fig_fi, width='stretch')
+                st.divider()
+        except FileNotFoundError:
+            pass  # feature importance file not generated yet — skip silently
+
+        # -------------------------------------------------------------
+        # 3. The "Commitment" story — Contract & Tenure
+        # -------------------------------------------------------------
+        st.subheader("📄 Commitment: Contract & Tenure")
         c1, c2 = st.columns(2)
+
         with c1:
-            churn_by_contract = (
-                filtered.groupby("contract")["churn_value"]
-                .mean()
-                .reset_index()
-            )
-            churn_by_contract["churn_value"] *= 100
-            fig = px.bar(
-                churn_by_contract,
-                x="contract",
-                y="churn_value",
-                labels={"churn_value": "Churn rate (%)", "contract": "Contract"},
-                title="Churn rate by contract type",
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            if has_cols(filtered, ["contract", "churn_label"]):
+                stacked = stacked_100_by(filtered, "contract")
+                fig = px.bar(
+                    stacked,
+                    x="contract",
+                    y="pct",
+                    color="churn_label",
+                    barmode="stack",
+                    labels={"pct": "Share (%)", "contract": "Contract", "churn_label": "Churned"},
+                    title="Churn rate by contract type (100% stacked)",
+                )
+                st.plotly_chart(fig, width='stretch')
+            else:
+                st.caption("Contract data not available.")
 
         with c2:
-            fig2 = px.histogram(
-                filtered,
-                x="tenure_in_months",
-                color="churn_label",
-                barmode="overlay",
-                nbins=30,
-                title="Tenure distribution by churn status",
-                labels={"tenure_in_months": "Tenure (months)"},
-            )
-            st.plotly_chart(fig2, use_container_width=True)
+            if has_cols(filtered, ["tenure_in_months", "churn_label"]):
+                fig2 = px.histogram(
+                    filtered,
+                    x="tenure_in_months",
+                    color="churn_label",
+                    barmode="overlay",
+                    nbins=30,
+                    title="Tenure distribution by churn status",
+                    labels={"tenure_in_months": "Tenure (months)"},
+                )
+                st.plotly_chart(fig2, width='stretch')
+            else:
+                st.caption("Tenure data not available.")
 
+        st.divider()
+
+        # -------------------------------------------------------------
+        # 4. The "Financial Pressure" story — Monthly/Total Charges
+        # -------------------------------------------------------------
+        st.subheader("💰 Financial pressure: Charges")
         c3, c4 = st.columns(2)
+
         with c3:
-            fig3 = px.box(
-                filtered,
-                x="churn_label",
-                y="monthly_charge",
-                title="Monthly charges by churn status",
-                labels={"churn_label": "Churned", "monthly_charge": "Monthly charge"},
-            )
-            st.plotly_chart(fig3, use_container_width=True)
+            if has_cols(filtered, ["churn_label", "monthly_charge"]):
+                fig3 = px.box(
+                    filtered,
+                    x="churn_label",
+                    y="monthly_charge",
+                    title="Monthly charges by churn status",
+                    labels={"churn_label": "Churned", "monthly_charge": "Monthly charge"},
+                )
+                st.plotly_chart(fig3, width='stretch')
+            else:
+                st.caption("Monthly charge data not available.")
 
         with c4:
-            churn_by_internet = (
-                filtered.groupby("internet_service")["churn_value"]
-                .mean()
-                .reset_index()
+            if has_cols(filtered, ["tenure_in_months", "total_charges", "churn_label"]):
+                fig3b = px.scatter(
+                    filtered,
+                    x="tenure_in_months",
+                    y="total_charges",
+                    color="churn_label",
+                    opacity=0.6,
+                    title="Tenure vs. total charges",
+                    labels={
+                        "tenure_in_months": "Tenure (months)",
+                        "total_charges": "Total charges",
+                        "churn_label": "Churned",
+                    },
+                )
+                st.plotly_chart(fig3b, width='stretch')
+            else:
+                st.caption("Total charges data not available.")
+
+        st.divider()
+
+        # -------------------------------------------------------------
+        # 5. The "Loyalty Catalyst" story — Referrals, Age
+        # -------------------------------------------------------------
+        st.subheader("🤝 Loyalty catalysts: Referrals & Age")
+        c6, c5 = st.columns(2)
+
+
+        with c6:
+            if "age" in filtered.columns:
+                bucketed = filtered.copy()
+                bucketed["age_bracket"] = pd.cut(
+                    bucketed["age"],
+                    bins=[0, 30, 50, 120],
+                    labels=["18-30", "31-50", "50+"],
+                )
+                fig6 = px.bar(
+                    churn_rate_by(bucketed, "age_bracket"),
+                    x="age_bracket",
+                    y="Churn rate (%)",
+                    title="Churn rate by age bracket",
+                    labels={"age_bracket": "Age"},
+                )
+                st.plotly_chart(fig6, width='stretch')
+            else:
+                st.caption("Age data not available.")
+
+        st.divider()
+
+        # -------------------------------------------------------------
+        # 6. The "Service & Billing Friction" story
+        # -------------------------------------------------------------
+        st.subheader("🧾 Service & billing friction")
+        c7, c8 = st.columns(2)
+
+        with c7:
+            if has_cols(filtered, ["payment_method", "churn_label"]):
+                stacked_pm = stacked_100_by(filtered, "payment_method")
+                fig7 = px.bar(
+                    stacked_pm,
+                    x="payment_method",
+                    y="pct",
+                    color="churn_label",
+                    barmode="stack",
+                    labels={"pct": "Share (%)", "payment_method": "Payment method", "churn_label": "Churned"},
+                    title="Churn rate by payment method (100% stacked)",
+                )
+                st.plotly_chart(fig7, width='stretch')
+            else:
+                st.caption("Payment method data not available.")
+
+        with c8:
+            if "internet_type" in filtered.columns:
+                fig8 = px.bar(
+                    churn_rate_by(filtered, "internet_type"),
+                    x="internet_type",
+                    y="Churn rate (%)",
+                    title="Churn rate by internet type",
+                    labels={"internet_type": "Internet type"},
+                )
+                st.plotly_chart(fig8, width='stretch')
+            else:
+                st.caption("Internet type data not available.")
+
+        if "paperless_billing" in filtered.columns:
+            pb = churn_rate_by(filtered, "paperless_billing")
+            cols = st.columns(len(pb)) if len(pb) else []
+            for col, (_, row) in zip(cols, pb.iterrows()):
+                col.metric(f"Paperless billing = {row['paperless_billing']}", f"{row['Churn rate (%)']:.1f}%")
+
+        st.divider()
+
+        # -------------------------------------------------------------
+        # 7. High-risk archetype — Contract x Referrals heatmap
+        # -------------------------------------------------------------
+        st.subheader("🔥 High-risk archetype")
+        if has_cols(filtered, ["contract", "number_of_referrals"]):
+            heat_df = filtered.copy()
+            heat_df["referral_bucket"] = pd.cut(
+                heat_df["number_of_referrals"],
+                bins=[-1, 0, 2, float("inf")],
+                labels=["0", "1-2", "3+"],
             )
-            churn_by_internet["churn_value"] *= 100
-            fig4 = px.bar(
-                churn_by_internet,
-                x="internet_service",
-                y="churn_value",
-                labels={
-                    "churn_value": "Churn rate (%)",
-                    "internet_service": "Internet service",
-                },
-                title="Churn rate by internet service",
+            pivot = (
+                heat_df.pivot_table(
+                    index="contract",
+                    columns="referral_bucket",
+                    values="churn_value",
+                    aggfunc="mean",
+                    observed=True,
+                )
+                * 100
             )
-            st.plotly_chart(fig4, use_container_width=True)
-    elif df is not None:
-        st.info(
-            "The database is empty. Run the loader job to import the "
-            "telco churn Excel data (see ReadMe.md)."
-        )
+            fig9 = px.imshow(
+                pivot,
+                text_auto=".1f",
+                color_continuous_scale="Reds",
+                labels=dict(x="Referrals", y="Contract", color="Churn rate (%)"),
+                title="Churn rate (%): Contract type × Number of referrals",
+            )
+            st.plotly_chart(fig9, width='stretch')
+            st.caption(
+                "The hottest cell is your call list: e.g. month-to-month "
+                "customers with zero referrals are typically the highest-risk segment."
+            )
+        else:
+            st.caption("Contract and/or referral data not available for the heatmap.")
 
 # ---------------------------------------------------------------------------
 # Data Versioning — snapshots are created only when the live dataframe changes.
 # This is independent from the Overview filters/charts.
 # ---------------------------------------------------------------------------
+# 1. State Initialization
 if "df_versions" not in st.session_state:
     st.session_state.df_versions = []
-
 if "df_version_times" not in st.session_state:
     st.session_state.df_version_times = []
 
+# 2. Deduplicated Snapshot Append
 if "df_now" in locals() and df_now is not None and not df_now.empty:
     add_version = (
         not st.session_state.df_versions
         or not df_now.equals(st.session_state.df_versions[-1])
     )
-
     if add_version:
         st.session_state.df_versions.append(df_now.copy())
         st.session_state.df_version_times.append(
             pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
         )
+
+# 3. Version History UI
+with st.expander("🕓 Data version history", expanded=False):
+    num_versions = len(st.session_state.df_versions)
+    if num_versions >= 2:
+        df_prev = st.session_state.df_versions[-2]
+        df_curr = st.session_state.df_versions[-1]
+
+        # Identify newly added rows
+        df_added = df_curr.merge(df_prev, how="outer", indicator=True)
+        df_added = df_added[df_added["_merge"] == "left_only"].drop(columns=["_merge"])
+
+        st.caption(f"Showing comparison between latest 2 of {num_versions} captured versions.")
+        st.write("Previous snapshot", df_prev)
+        st.write("Current snapshot", df_curr)
+        st.write("Newly added rows", df_added)
+    else:
+        st.write("Only one unique snapshot recorded so far.")
 
 
 # ---------------------------------------------------------------------------
@@ -626,30 +831,3 @@ with tab_custom:
                             ]
                             st.rerun()
 
-        # ===================================================================
-        # DATA VERSION HISTORY
-        # ===================================================================
-        with st.expander("🕓 Data version history", expanded=False):
-            if len(st.session_state.df_versions) >= 2:
-                for i, version_df in enumerate(st.session_state.df_versions):
-                    st.write(
-                        f"**Version {i + 1}** — "
-                        f"{st.session_state.df_version_times[i]} — "
-                        f"{len(version_df):,} rows × {len(version_df.columns):,} columns"
-                    )
-
-                previous_df = st.session_state.df_versions[-2]
-                current_df = st.session_state.df_versions[-1]
-                added_rows = current_df.merge(
-                    previous_df,
-                    how="outer",
-                    indicator=True,
-                )
-                added_rows = added_rows[
-                    added_rows["_merge"] == "left_only"
-                ].drop(columns=["_merge"])
-
-                st.write("**Newly added rows in the latest version**")
-                st.dataframe(added_rows, use_container_width=True)
-            else:
-                st.write("Only one snapshot is available so far.")
