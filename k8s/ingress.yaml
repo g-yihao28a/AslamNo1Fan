@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: telco-churn-ingress
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: telco-churn.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8008

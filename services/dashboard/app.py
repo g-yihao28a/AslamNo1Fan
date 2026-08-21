@@ -7,10 +7,6 @@ from config import config
 from data_access import load_customer_data, load_inference_logs
 from feature_options import FEATURE_OPTIONS
 
-from flask import Flask, jsonify, request
-
-app = Flask(__name__)
-
 st.set_page_config(page_title="Telco Churn Dashboard", layout="wide")
 
 st.title("📊 Telco Customer Churn Dashboard")
@@ -126,9 +122,3 @@ with tab_overview:
             "The database is empty. Run the loader job to import the "
             "telco churn Excel data (see ReadMe.md)."
         )
-
-@app.route("/health", methods=["GET"])
-def health_check():
-    return {
-        "status": "Dashboard is running"
-    }, 200
