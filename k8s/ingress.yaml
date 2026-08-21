@@ -19,14 +19,6 @@ spec:
   - host: telco-churn.local
     http:
       paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: api-gateway-service
-            port:
-              number: 8008
-
       # All these for routing to dashboard
       - path: /dashboard
         pathType: Prefix
@@ -43,7 +35,7 @@ spec:
             name: dashboard-service
             port:
               number: 8501
-      
+
       - path: /_stcore
         pathType: Prefix
         backend:
@@ -52,3 +44,10 @@ spec:
             port:
               number: 8501
 
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8008

@@ -21,7 +21,7 @@ spec:
       containers:
       - name: api-gateway-container
         image: nigelnakajima/api_gateway:v1
-        imagePullPolicy: IfNotPresent  # Uses local image cache if available
+        imagePullPolicy: Always
         # Environment variables passed to application
         envFrom:
         - configMapRef:

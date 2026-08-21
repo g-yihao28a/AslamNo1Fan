@@ -14,11 +14,11 @@ load_dotenv()
 
 class Config:
 # ---- Service Names ----
-    GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api_gateway")
-    ML_ENGINE_NAME = os.getenv("ML_ENGINE_NAME", "ml_engine")
+    GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api-gateway")
+    ML_ENGINE_NAME = os.getenv("ML_ENGINE_NAME", "ml-engine")
     DASHBOARD_NAME = os.getenv("DASHBOARD_NAME", "dashboard")
-    DATABASE_NAME = os.getenv("DATABASE_NAME", "database_service")
-    ML_PREDICTION_NAME = os.getenv("ML_PREDICTION_NAME","ml_prediction")
+    DATABASE_NAME = os.getenv("DATABASE_NAME", "database-service")
+    ML_PREDICTION_NAME = os.getenv("ML_PREDICTION_NAME","ml-prediction")
 
     # ---- Ports ----
     GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", 8008))

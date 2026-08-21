@@ -46,7 +46,7 @@ spec:
     spec:
       containers:
       - name: database
-        image: gyihao28a/telco-database:latest
+        image: nigelnakajima/telco-database:latest
         ports:
         - containerPort: 5432
         
@@ -114,8 +114,8 @@ spec:
     spec:
       containers:
       - name: database-service
-        image: gyihao28a/telco-database-service:latest
-        imagePullPolicy: IfNotPresent  # Uses local image cache if available
+        image: nigelnakajima/telco-database-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 5000
         
@@ -171,13 +171,14 @@ metadata:
   name: db-loader
   namespace: default
 spec:
+  ttlSecondsAfterFinished: 10
   backoffLimit: 5                  # Retry up to 5 times on failure
   template:
     spec:
       restartPolicy: OnFailure
       containers:
         - name: db-loader
-          image: gyihao28a/telco-database-loader:latest
+          image: nigelnakajima/telco-database-loader:latest
           
           # Environment variables passed to the loader script
           env:

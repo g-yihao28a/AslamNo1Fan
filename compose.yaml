@@ -2,6 +2,7 @@ services:
   # Internal Database
   database:
     build: ./services/database
+    image: nigelnakajima/telco-database:latest
     container_name: telco_database
     environment:
       POSTGRES_DB: ${INTERNAL_DB_NAME:-telco_churn_db}
@@ -24,6 +25,7 @@ services:
   # Run explicitly with: docker compose run --rm db_loader
   db_loader:
     build: ./services/database/loader
+    image: nigelnakajima/telco-database-loader:latest
     container_name: telco_db_loader
     environment:
       DB_HOST: database
@@ -45,6 +47,7 @@ services:
   # Database service (to interact with internal database)
   database_service:
     build: ./services/database/api
+    image: nigelnakajima/telco-database-service:latest
     container_name: telco_database_service
     environment:
       DB_HOST: database
