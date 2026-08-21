@@ -3,7 +3,6 @@ import streamlit as st
 import plotly.express as px
 import uuid
 
-from config import config
 from data_access import load_customer_data, load_inference_logs
 from feature_options import FEATURE_OPTIONS
 

@@ -18,10 +18,11 @@ spec:
       containers:
       - name: dashboard
         image: nigelnakajima/dashboard:v1
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        command: ["streamlit"]
         args:
           - "run"
-          - "dashboard.py"
+          - "app.py"
           - "--server.port=8501"
           - "--server.address=0.0.0.0"
           - "--server.baseUrlPath=/dashboard"
