@@ -179,16 +179,6 @@ def predict_csv_single():
                     "error": str(item_err),
                 })
 
-        # Save inference run to database microservice logs
-        try:
-            requests.post(
-                f"{INTERNAL_DATABASE_URL}/logs",
-                json={"type": "csv_single_prediction_batch", "results": results},
-                timeout=10,
-            )
-        except requests.RequestException:
-            pass
-
         return jsonify({"results": results}), 200
 
     except Exception as e:
