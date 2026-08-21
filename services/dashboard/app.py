@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 from config import config as app_config
-from data_access import load_customer_data, load_inference_logs, normalize_series
+from data_access import load_customer_data
 from feature_options import FEATURE_OPTIONS
 
 from flask import Flask
@@ -16,8 +16,8 @@ st.set_page_config(page_title="Telco Churn Dashboard", layout="wide")
 
 st.title("📊 Telco Customer Churn Dashboard")
 
-tab_overview, tab_predict, tab_logs, tab_custom1 = st.tabs(
-    ["Overview", "Predict Churn", "Recent Predictions", "Custom Charts"]
+tab_overview,  tab_custom = st.tabs(
+    ["Overview",  "Custom Charts"]
 )
 
 # ---------------------------------------------------------------------------
@@ -34,18 +34,19 @@ with tab_overview:
         df = None
 
     if df is not None and not df.empty:
-        st.sidebar.header("Overview Filters")
+        # Keep an unfiltered live snapshot for the Custom Charts version selector.
+        df_now = df.copy()
+
+        st.sidebar.header("Filters")
         filter_columns = [ 'phone_service',
             'multiple_lines', 'internet_service', 'internet_type','online_security', 'online_backup', 
             'contract', 'paperless_billing', 'payment_method', 'gender','senior_citizen',    'dependents']
-        for col in filter_columns:
-            if col in df.columns:
-                df[f"{col}_norm"] = normalize_series(df[col], missing_label="_missing_")
+
 
         # 2. Dictionary to hold user selections
         selected_filters = {}
 
-        st.sidebar.caption("Use these filters to update the Overview KPIs and charts.")
+        st.sidebar.header("Filter Data")
 
         # 3. Loop: create a multiselect for each column
         for col in filter_columns:
@@ -155,281 +156,500 @@ with tab_overview:
         )
 
 # ---------------------------------------------------------------------------
-# Predict tab: interactive form that calls the ML engine (through the gateway)
+# Data Versioning — snapshots are created only when the live dataframe changes.
+# This is independent from the Overview filters/charts.
 # ---------------------------------------------------------------------------
-with tab_predict:
-    st.subheader("Score a customer")
-    st.caption("Sends the inputs to the ML engine's /predict endpoint live.")
+if "df_versions" not in st.session_state:
+    st.session_state.df_versions = []
 
-    with st.form("predict_form"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            tenure = st.slider("Tenure (months)", 0, 72, 12)
-            monthly_charges = st.slider("Monthly charges", 0.0, 150.0, 65.0)
-            total_charges = st.number_input("Total charges", 0.0, 10000.0, 780.0)
-            gender = st.selectbox("Gender", FEATURE_OPTIONS["Gender"])
-        with col2:
-            senior = st.selectbox("Senior citizen", FEATURE_OPTIONS["Senior Citizen"])
-            partner = st.selectbox("Partner", FEATURE_OPTIONS["Partner"])
-            dependents = st.selectbox("Dependents", FEATURE_OPTIONS["Dependents"])
-            contract = st.selectbox("Contract", FEATURE_OPTIONS["Contract"])
-        with col3:
-            internet = st.selectbox(
-                "Internet service", FEATURE_OPTIONS["Internet Service"]
-            )
-            payment = st.selectbox(
-                "Payment method", FEATURE_OPTIONS["Payment Method"]
-            )
-            paperless = st.selectbox(
-                "Paperless billing", FEATURE_OPTIONS["Paperless Billing"]
-            )
-            phone = st.selectbox("Phone service", FEATURE_OPTIONS["Phone Service"])
+if "df_version_times" not in st.session_state:
+    st.session_state.df_version_times = []
 
-        submitted = st.form_submit_button("Predict churn risk")
-
-    if submitted:
-        payload = {
-            "Tenure Months": tenure,
-            "Monthly Charges": monthly_charges,
-            "Total Charges": total_charges,
-            "Gender": gender,
-            "Senior Citizen": senior,
-            "Partner": partner,
-            "Dependents": dependents,
-            "Phone Service": phone,
-            "Multiple Lines": "No",
-            "Internet Service": internet,
-            "Online Security": "No",
-            "Online Backup": "No",
-            "Device Protection": "No",
-            "Tech Support": "No",
-            "Streaming TV": "No",
-            "Streaming Movies": "No",
-            "Contract": contract,
-            "Paperless Billing": paperless,
-            "Payment Method": payment,
-        }
-        try:
-            resp = requests.post(
-                f"{app_config.API_GATEWAY_URL}/api/ml/predict", json=payload, timeout=10
-            )
-            if resp.status_code == 200:
-                result = resp.json()
-                prob = result["churn_probability"]
-                st.metric("Churn probability", f"{prob * 100:.1f}%")
-                if result["predicted_churn"]:
-                    st.error("Prediction: likely to churn")
-                else:
-                    st.success("Prediction: likely to stay")
-            else:
-                st.warning(f"ML engine returned an error: {resp.json()}")
-        except requests.RequestException as exc:
-            st.error(f"Could not reach the ML engine via the API gateway: {exc}")
-
-# ---------------------------------------------------------------------------
-# Logs tab: recent predictions written to inference_logs by the ML engine
-# ---------------------------------------------------------------------------
-with tab_logs:
-    st.subheader("Recent prediction history")
-    logs = load_inference_logs()
-    if logs.empty:
-        st.info("No predictions logged yet. Try the Predict Churn tab.")
-    else:
-        st.dataframe(logs, use_container_width=True)
-
-@app.route("/health", methods=["GET"])
-def health_check():
-    return {
-        "status": "Dashboard is running"
-    }, 200
-
-# ---------------------------------------------------------------------------
-# Custom Charts tab: user-defined Plotly dashboards
-# ---------------------------------------------------------------------------
-with tab_custom1:
-    st.subheader("Custom Charts")
-    st.caption(
-        "Build your own charts from the customer dataset. "
-        "Chart controls are kept inside this tab so they do not conflict "
-        "with the Overview filters."
+if "df_now" in locals() and df_now is not None and not df_now.empty:
+    add_version = (
+        not st.session_state.df_versions
+        or not df_now.equals(st.session_state.df_versions[-1])
     )
 
-    try:
-        custom_df = load_customer_data()
-    except Exception as exc:
-        st.error(
-            "Could not load data from the database. Has it been seeded yet? "
-            f"({exc})"
+    if add_version:
+        st.session_state.df_versions.append(df_now.copy())
+        st.session_state.df_version_times.append(
+            pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
         )
-        custom_df = None
 
-    if custom_df is not None and not custom_df.empty:
-        if "charts" not in st.session_state:
-            st.session_state.charts = []
 
-        numeric_cols = custom_df.select_dtypes(include=np.number).columns.tolist()
-        all_cols = custom_df.columns.tolist()
+# ---------------------------------------------------------------------------
+# Custom Charts tab: version-aware self-service charts.
+# The controls live inside this tab so they do not conflict with the Overview
+# sidebar filters. Overview visuals above remain unchanged.
+# ---------------------------------------------------------------------------
+with tab_custom:
+    st.subheader("📈 Custom Charts")
+    st.caption(
+        "Choose a saved data version, chart type, columns, and aggregation "
+        "method. Saved charts continue to use the version they were created from."
+    )
+
+    if not st.session_state.df_versions:
+        st.info("No data versions are available yet.")
+    else:
+        # -------------------------------------------------------------------
+        # Data version selector
+        # -------------------------------------------------------------------
+        version_labels = []
+        for i, timestamp in enumerate(st.session_state.df_version_times):
+            if i == len(st.session_state.df_versions) - 1:
+                version_labels.append(f"Current data — {timestamp}")
+            else:
+                version_labels.append(f"Version {i + 1} — {timestamp}")
+
+        selected_version = st.selectbox(
+            "Data version",
+            range(len(st.session_state.df_versions)),
+            format_func=lambda i: version_labels[i],
+            key="custom_data_version",
+        )
+
+        selected_df = st.session_state.df_versions[selected_version].copy()
+
+        st.caption(
+            f"Selected version: {len(selected_df):,} rows × "
+            f"{len(selected_df.columns):,} columns"
+        )
+
+        with st.expander("View selected data", expanded=False):
+            st.dataframe(selected_df, use_container_width=True)
+
+        # -------------------------------------------------------------------
+        # Chart state
+        # -------------------------------------------------------------------
+        if "custom_charts" not in st.session_state:
+            st.session_state.custom_charts = []
+
+        numeric_cols = selected_df.select_dtypes(include=np.number).columns.tolist()
+        all_cols = selected_df.columns.tolist()
 
         if not numeric_cols:
             st.warning("No numeric columns are available for custom charts.")
         else:
-            # Keep chart creation controls in the main content area.
-            with st.expander("➕ Add a chart", expanded=not st.session_state.charts):
-                chart_type = st.selectbox(
-                    "Chart type",
-                    ["Histogram", "Box Plot", "Scatter", "Heatmap", "Bar"],
-                    key="custom_chart_type",
-                )
+            st.divider()
+            st.subheader("➕ Create a chart")
 
-                chart_config = {"type": chart_type}
+            chart_type = st.selectbox(
+                "Chart type",
+                [
+                    "Bar Chart",
+                    "Line Chart",
+                    "Histogram",
+                    "Box Plot",
+                    "Scatter Plot",
+                    "Pie Chart",
+                    "Heatmap",
+                ],
+                key="custom_chart_type",
+            )
 
-                if chart_type == "Histogram":
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        chart_config["x"] = st.selectbox(
-                            "Column", numeric_cols, key="custom_hist_x"
-                        )
-                    with c2:
-                        chart_config["bins"] = st.slider(
-                            "Bins", 5, 100, 30, key="custom_hist_bins"
-                        )
+            # ---------------------------------------------------------------
+            # Bar / Line / Pie: these support aggregation.
+            # ---------------------------------------------------------------
+            if chart_type in {"Bar Chart", "Line Chart", "Pie Chart"}:
+                c1, c2 = st.columns(2)
 
-                elif chart_type == "Box Plot":
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        chart_config["y"] = st.selectbox(
-                            "Value column", numeric_cols, key="custom_box_y"
-                        )
-                    with c2:
-                        chart_config["x"] = st.selectbox(
-                            "Group by (optional)",
-                            [None] + all_cols,
-                            key="custom_box_x",
-                        )
+                with c1:
+                    x_col = st.selectbox(
+                        "Category / X-axis",
+                        all_cols,
+                        key="custom_x_col",
+                    )
 
-                elif chart_type == "Scatter":
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        chart_config["x"] = st.selectbox(
-                            "X", numeric_cols, key="custom_scatter_x"
-                        )
-                    with c2:
-                        chart_config["y"] = st.selectbox(
-                            "Y", numeric_cols, key="custom_scatter_y"
-                        )
-                    with c3:
-                        chart_config["color"] = st.selectbox(
-                            "Color by (optional)",
-                            [None] + all_cols,
-                            key="custom_scatter_color",
-                        )
-
-                elif chart_type == "Heatmap":
-                    chart_config["cols"] = st.multiselect(
-                        "Columns for correlation",
+                with c2:
+                    y_col = st.selectbox(
+                        "Value column",
                         numeric_cols,
-                        default=numeric_cols,
-                        key="custom_heatmap_cols",
+                        key="custom_y_col",
                     )
 
-                elif chart_type == "Bar":
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        chart_config["x"] = st.selectbox(
-                            "Category", all_cols, key="custom_bar_x"
-                        )
-                    with c2:
-                        chart_config["y"] = st.selectbox(
-                            "Value", numeric_cols, key="custom_bar_y"
-                        )
+                aggregation = st.selectbox(
+                    "How should values be handled?",
+                    ["Mean", "Total (Sum)", "Count", "Minimum", "Maximum"],
+                    key="custom_aggregation",
+                )
 
-                if st.button("Add chart", type="primary", key="add_custom_chart"):
-                    chart_config["id"] = (
-                        max((c["id"] for c in st.session_state.charts), default=-1) + 1
+                aggregation_map = {
+                    "Mean": "mean",
+                    "Total (Sum)": "sum",
+                    "Count": "count",
+                    "Minimum": "min",
+                    "Maximum": "max",
+                }
+
+                agg_function = aggregation_map[aggregation]
+
+                if agg_function == "count":
+                    chart_df = (
+                        selected_df.groupby(x_col, dropna=False)[y_col]
+                        .count()
+                        .reset_index(name="value")
                     )
-                    st.session_state.charts.append(chart_config)
-                    st.rerun()
+                else:
+                    chart_df = (
+                        selected_df.groupby(x_col, dropna=False)[y_col]
+                        .agg(agg_function)
+                        .reset_index(name="value")
+                    )
 
-        def render_chart(cfg):
-            chart_type = cfg["type"]
+                if chart_type == "Bar Chart":
+                    fig = px.bar(
+                        chart_df,
+                        x=x_col,
+                        y="value",
+                        title=f"{aggregation} of {y_col} by {x_col}",
+                        labels={"value": aggregation, x_col: x_col},
+                    )
+                elif chart_type == "Line Chart":
+                    fig = px.line(
+                        chart_df,
+                        x=x_col,
+                        y="value",
+                        markers=True,
+                        title=f"{aggregation} of {y_col} by {x_col}",
+                        labels={"value": aggregation, x_col: x_col},
+                    )
+                else:
+                    fig = px.pie(
+                        chart_df,
+                        names=x_col,
+                        values="value",
+                        title=f"{aggregation} of {y_col} by {x_col}",
+                    )
 
-            if chart_type == "Histogram":
-                return px.histogram(
-                    custom_df, x=cfg["x"], nbins=cfg["bins"],
-                    title=f"{cfg['x']} distribution"
+                chart_config = {
+                    "type": chart_type,
+                    "version": selected_version,
+                    "version_label": version_labels[selected_version],
+                    "x": x_col,
+                    "y": y_col,
+                    "aggregation": aggregation,
+                }
+
+            # ---------------------------------------------------------------
+            # Histogram: distribution, so no Mean/Sum selector is needed.
+            # ---------------------------------------------------------------
+            elif chart_type == "Histogram":
+                value_col = st.selectbox(
+                    "Value column",
+                    numeric_cols,
+                    key="custom_hist_value",
+                )
+                bins = st.slider(
+                    "Number of bins",
+                    5,
+                    100,
+                    30,
+                    key="custom_hist_bins",
                 )
 
-            if chart_type == "Box Plot":
-                return px.box(
-                    custom_df, x=cfg["x"], y=cfg["y"],
-                    title=f"{cfg['y']} by {cfg['x']}" if cfg["x"] else f"{cfg['y']} distribution"
+                fig = px.histogram(
+                    selected_df,
+                    x=value_col,
+                    nbins=bins,
+                    title=f"Distribution of {value_col}",
                 )
 
-            if chart_type == "Scatter":
-                return px.scatter(
-                    custom_df, x=cfg["x"], y=cfg["y"], color=cfg["color"],
-                    title=f"{cfg['y']} vs {cfg['x']}"
+                chart_config = {
+                    "type": chart_type,
+                    "version": selected_version,
+                    "version_label": version_labels[selected_version],
+                    "value": value_col,
+                    "bins": bins,
+                }
+
+            # ---------------------------------------------------------------
+            # Box plot: preserves the full distribution.
+            # ---------------------------------------------------------------
+            elif chart_type == "Box Plot":
+                c1, c2 = st.columns(2)
+                with c1:
+                    value_col = st.selectbox(
+                        "Value column",
+                        numeric_cols,
+                        key="custom_box_value",
+                    )
+                with c2:
+                    group_col = st.selectbox(
+                        "Group by (optional)",
+                        [None] + all_cols,
+                        key="custom_box_group",
+                    )
+
+                fig = px.box(
+                    selected_df,
+                    x=group_col,
+                    y=value_col,
+                    title=(
+                        f"{value_col} by {group_col}"
+                        if group_col
+                        else f"Distribution of {value_col}"
+                    ),
                 )
 
-            if chart_type == "Heatmap":
-                if len(cfg["cols"]) < 2:
-                    return None
-                corr = custom_df[cfg["cols"]].corr()
-                return px.imshow(
-                    corr,
-                    text_auto=True,
-                    title="Correlation heatmap",
-                    aspect="auto",
+                chart_config = {
+                    "type": chart_type,
+                    "version": selected_version,
+                    "version_label": version_labels[selected_version],
+                    "value": value_col,
+                    "group": group_col,
+                }
+
+            # ---------------------------------------------------------------
+            # Scatter: each row is an observation, so no aggregation.
+            # ---------------------------------------------------------------
+            elif chart_type == "Scatter Plot":
+                c1, c2 = st.columns(2)
+                with c1:
+                    scatter_x = st.selectbox(
+                        "X-axis",
+                        numeric_cols,
+                        key="custom_scatter_x",
+                    )
+                with c2:
+                    scatter_y = st.selectbox(
+                        "Y-axis",
+                        numeric_cols,
+                        key="custom_scatter_y",
+                    )
+
+                scatter_color = st.selectbox(
+                    "Color by (optional)",
+                    [None] + all_cols,
+                    key="custom_scatter_color",
                 )
 
-            if chart_type == "Bar":
-                return px.bar(
-                    custom_df, x=cfg["x"], y=cfg["y"],
-                    title=f"{cfg['y']} by {cfg['x']}"
+                fig = px.scatter(
+                    selected_df,
+                    x=scatter_x,
+                    y=scatter_y,
+                    color=scatter_color,
+                    title=f"{scatter_y} vs {scatter_x}",
                 )
 
-            return None
+                chart_config = {
+                    "type": chart_type,
+                    "version": selected_version,
+                    "version_label": version_labels[selected_version],
+                    "x": scatter_x,
+                    "y": scatter_y,
+                    "color": scatter_color,
+                }
 
+            # ---------------------------------------------------------------
+            # Heatmap: correlation matrix, no aggregation selector.
+            # ---------------------------------------------------------------
+            else:  # Heatmap
+                heat_cols = st.multiselect(
+                    "Numeric columns for correlation",
+                    numeric_cols,
+                    default=numeric_cols,
+                    key="custom_heat_cols",
+                )
+
+                if len(heat_cols) < 2:
+                    st.warning("Select at least two numeric columns for a heatmap.")
+                    fig = None
+                else:
+                    corr = selected_df[heat_cols].corr()
+                    fig = px.imshow(
+                        corr,
+                        text_auto=".2f",
+                        color_continuous_scale="RdBu_r",
+                        zmin=-1,
+                        zmax=1,
+                        title="Correlation heatmap",
+                    )
+
+                chart_config = {
+                    "type": chart_type,
+                    "version": selected_version,
+                    "version_label": version_labels[selected_version],
+                    "cols": heat_cols,
+                }
+
+            # ---------------------------------------------------------------
+            # Preview + save
+            # ---------------------------------------------------------------
+            st.divider()
+            st.subheader("Chart Preview")
+
+            if fig is not None:
+                st.plotly_chart(fig, use_container_width=True)
+
+                if st.button(
+                    "➕ Add this chart to dashboard",
+                    type="primary",
+                    key="add_custom_chart",
+                ):
+                    existing_ids = [
+                        c.get("id", 0)
+                        for c in st.session_state.custom_charts
+                    ]
+                    chart_config["id"] = max(existing_ids, default=-1) + 1
+                    st.session_state.custom_charts.append(chart_config)
+                    st.success("Chart added to your dashboard.")
+            else:
+                st.info("Create a valid chart configuration to see the preview.")
+
+        # ===================================================================
+        # SAVED DASHBOARD
+        # ===================================================================
         st.divider()
+        st.subheader(
+            f"📊 My Dashboard ({len(st.session_state.custom_charts)} charts)"
+        )
 
-        if not st.session_state.charts:
-            st.info("No custom charts yet. Use “Add a chart” above to get started.")
+        if not st.session_state.custom_charts:
+            st.info("No custom charts added yet.")
         else:
-            st.subheader(f"Your dashboard ({len(st.session_state.charts)} chart"
-                         f"{'' if len(st.session_state.charts) == 1 else 's'})")
+            for i in range(0, len(st.session_state.custom_charts), 2):
+                row_charts = st.session_state.custom_charts[i:i + 2]
+                cols = st.columns(len(row_charts))
 
-            # Two charts per row gives a balanced wide-screen dashboard.
-            for i in range(0, len(st.session_state.charts), 2):
-                row_charts = st.session_state.charts[i:i + 2]
-                cols = st.columns(2)
-
-                for col, chart_cfg in zip(cols, row_charts):
+                for col, cfg in zip(cols, row_charts):
                     with col:
-                        fig = render_chart(chart_cfg)
+                        # A saved chart points to its original snapshot.
+                        version_index = cfg.get("version", 0)
+                        if version_index >= len(st.session_state.df_versions):
+                            st.warning("The data version for this chart is unavailable.")
+                            continue
 
-                        if fig is None:
-                            st.warning(
-                                "Select at least two numeric columns for the heatmap."
+                        chart_df = st.session_state.df_versions[version_index].copy()
+                        t = cfg["type"]
+
+                        if t in {"Bar Chart", "Line Chart", "Pie Chart"}:
+                            aggregation_map = {
+                                "Mean": "mean",
+                                "Total (Sum)": "sum",
+                                "Count": "count",
+                                "Minimum": "min",
+                                "Maximum": "max",
+                            }
+                            agg = aggregation_map[cfg["aggregation"]]
+
+                            if agg == "count":
+                                plot_df = (
+                                    chart_df.groupby(cfg["x"], dropna=False)[cfg["y"]]
+                                    .count()
+                                    .reset_index(name="value")
+                                )
+                            else:
+                                plot_df = (
+                                    chart_df.groupby(cfg["x"], dropna=False)[cfg["y"]]
+                                    .agg(agg)
+                                    .reset_index(name="value")
+                                )
+
+                            title = (
+                                f"{cfg['aggregation']} of {cfg['y']} by {cfg['x']}"
                             )
-                        else:
-                            st.plotly_chart(
-                                fig,
-                                use_container_width=True,
-                                key=f"chart_{chart_cfg['id']}",
+
+                            if t == "Bar Chart":
+                                fig = px.bar(plot_df, x=cfg["x"], y="value", title=title)
+                            elif t == "Line Chart":
+                                fig = px.line(
+                                    plot_df,
+                                    x=cfg["x"],
+                                    y="value",
+                                    markers=True,
+                                    title=title,
+                                )
+                            else:
+                                fig = px.pie(
+                                    plot_df,
+                                    names=cfg["x"],
+                                    values="value",
+                                    title=title,
+                                )
+
+                        elif t == "Histogram":
+                            fig = px.histogram(
+                                chart_df,
+                                x=cfg["value"],
+                                nbins=cfg["bins"],
+                                title=f"Distribution of {cfg['value']}",
                             )
+
+                        elif t == "Box Plot":
+                            fig = px.box(
+                                chart_df,
+                                x=cfg.get("group"),
+                                y=cfg["value"],
+                                title=(
+                                    f"{cfg['value']} by {cfg['group']}"
+                                    if cfg.get("group")
+                                    else f"Distribution of {cfg['value']}"
+                                ),
+                            )
+
+                        elif t == "Scatter Plot":
+                            fig = px.scatter(
+                                chart_df,
+                                x=cfg["x"],
+                                y=cfg["y"],
+                                color=cfg.get("color"),
+                                title=f"{cfg['y']} vs {cfg['x']}",
+                            )
+
+                        else:  # Heatmap
+                            heat_cols = cfg.get("cols", [])
+                            if len(heat_cols) < 2:
+                                st.warning("Not enough columns for this heatmap.")
+                                continue
+                            fig = px.imshow(
+                                chart_df[heat_cols].corr(),
+                                text_auto=".2f",
+                                color_continuous_scale="RdBu_r",
+                                zmin=-1,
+                                zmax=1,
+                                title="Correlation heatmap",
+                            )
+
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption(f"Data source: {cfg.get('version_label', 'Saved version')}")
 
                         if st.button(
                             "🗑️ Remove",
-                            key=f"remove_chart_{chart_cfg['id']}",
+                            key=f"remove_custom_chart_{cfg['id']}",
                         ):
-                            st.session_state.charts = [
-                                c for c in st.session_state.charts
-                                if c["id"] != chart_cfg["id"]
+                            st.session_state.custom_charts = [
+                                c
+                                for c in st.session_state.custom_charts
+                                if c.get("id") != cfg["id"]
                             ]
                             st.rerun()
-    elif custom_df is not None:
-        st.info(
-            "The database is empty. Run the loader job to import the "
-            "telco churn Excel data (see ReadMe.md)."
-        )
 
+        # ===================================================================
+        # DATA VERSION HISTORY
+        # ===================================================================
+        with st.expander("🕓 Data version history", expanded=False):
+            if len(st.session_state.df_versions) >= 2:
+                for i, version_df in enumerate(st.session_state.df_versions):
+                    st.write(
+                        f"**Version {i + 1}** — "
+                        f"{st.session_state.df_version_times[i]} — "
+                        f"{len(version_df):,} rows × {len(version_df.columns):,} columns"
+                    )
+
+                previous_df = st.session_state.df_versions[-2]
+                current_df = st.session_state.df_versions[-1]
+                added_rows = current_df.merge(
+                    previous_df,
+                    how="outer",
+                    indicator=True,
+                )
+                added_rows = added_rows[
+                    added_rows["_merge"] == "left_only"
+                ].drop(columns=["_merge"])
+
+                st.write("**Newly added rows in the latest version**")
+                st.dataframe(added_rows, use_container_width=True)
+            else:
+                st.write("Only one snapshot is available so far.")
