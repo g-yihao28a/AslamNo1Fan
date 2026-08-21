@@ -76,6 +76,7 @@ services:
   # ML engine
   ml_engine:
     build: ./services/ml_engine
+    image: hongheng/ml-engine:v1
     container_name: telco_ml_engine
     ports:
       - "${ML_ENGINE_PORT:-8010}:${ML_ENGINE_PORT:-8010}"
@@ -93,6 +94,7 @@ services:
   #  Prediction service
   ml_prediction:
     build: ./services/ml_prediction
+    image: hongheng/ml_prediction:v1
     container_name: telco_ml_prediction
     ports:
       - "${ML_PREDICTION_PORT:-8011}:${ML_PREDICTION_PORT:-8011}"
