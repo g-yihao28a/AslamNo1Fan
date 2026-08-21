@@ -17,10 +17,6 @@ class Config:
     GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api_gateway")
     ML_ENGINE_NAME = os.getenv("ML_ENGINE_NAME", "ml_engine")
     DASHBOARD_NAME = os.getenv("DASHBOARD_NAME", "dashboard")
-    # NOTE: must match the service name in compose.yaml (`database_service`)
-    # and the port it actually listens on (5000, per its Dockerfile/app.run).
-    # The old defaults ("database_app" / 8009) didn't match any real
-    # container, so DATABASE_URL below pointed nowhere on the docker network.
     DATABASE_NAME = os.getenv("DATABASE_NAME", "database_service")
     ML_PREDICTION_NAME = os.getenv("ML_PREDICTION_NAME","ml_prediction")
 
@@ -41,13 +37,21 @@ class Config:
     }
 
     # ---- External URLs (Host Machine / Browser Access) ----
+    # EXTERNAL_URLS = {
+    #     "API_GATEWAY_URL": f"http://localhost:{GATEWAY_PORT}",
+    #     "ML_ENGINE_URL": f"http://localhost:{ML_ENGINE_PORT}",
+    #     "ML_PREDICTION_URL": f"http://localhost:{ML_PREDICTION_PORT}",
+    #     "DASHBOARD_URL": f"http://localhost:{DASHBOARD_PORT}",
+    #     "DATABASE_URL": f"http://localhost:{DATABASE_PORT}",
+    # }
+
     EXTERNAL_URLS = {
-        "API_GATEWAY_URL": f"http://localhost:{GATEWAY_PORT}",
-        "ML_ENGINE_URL": f"http://localhost:{ML_ENGINE_PORT}",
-        "ML_PREDICTION_URL": f"http://localhost:{ML_PREDICTION_PORT}",
-        "DASHBOARD_URL": f"http://localhost:{DASHBOARD_PORT}",
-        "DATABASE_URL": f"http://localhost:{DATABASE_PORT}",
-    }
+    "API_GATEWAY_URL": f"http://telco-churn.local:{GATEWAY_PORT}",
+    "ML_ENGINE_URL": f"http://telco-churn.local:{ML_ENGINE_PORT}",
+    "ML_PREDICTION_URL": f"http://telco-churn.local:{ML_PREDICTION_PORT}",
+    "DASHBOARD_URL": f"http://telco-churn.local:{DASHBOARD_PORT}",
+    "DATABASE_URL": f"http://telco-churn.local:{DATABASE_PORT}",
+}
 
     FEATURE_NAME_MAPPING = {
     "tenure_in_months": "Tenure Months",
