@@ -122,7 +122,7 @@ def train_model():
     if response.status_code == 200:
         print("Model retrained successfully:")
         metadata = response.json()
-        return metadata
+        return jsonify(metadata), 200
     else:
         return jsonify({
                         "error": "ML engine returned an error",
@@ -159,7 +159,7 @@ def reload_model():
     if response.status_code == 200:
         print("Model reloaded successfully:")
         metadata = response.json()
-        return metadata
+        return jsonify(metadata), 200
     else:
         return jsonify({
                         "error": "ML engine returned an error",
