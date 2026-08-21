@@ -9,7 +9,9 @@ dashboard
 api_gateway
 
 ## First-time setup
-Run setup.ps1 (Windows)
+Windows:
+  In po: `Add-Content -Path C:\Windows\System32\drivers\etc\hosts -Value "127.0.0.1 telco-churn.local"`
+  Run setup.ps1
 
 ## Everyday use
 Run start.ps1 to start (Windows)

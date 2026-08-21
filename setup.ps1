@@ -1,22 +1,26 @@
-# Copies .env.example
-Copy-Item -Path ".env.example" -Destination ".env"
-Write-Host ".env file created from .env.example"
+# setup.ps1
+Write-Host "Checking Minikube Status..."
+if ((minikube status) -notmatch "Running") {
+    minikube start --driver=docker
+}
 
-# Start internal database
-docker compose up -d database
+Write-Host " Enabling Required Minikube Addons..."
+minikube addons enable ingress
+minikube addons enable ingress-dns
 
-# Run db loader
-docker compose run --rm -d db_loader
+Write-Host "Creating ConfigMap from .env..." 
+if (Test-Path ".env") {
+    kubectl create configmap app-config --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+} else {
+    Write-Warning ".env file not found. Copying .env.example to .env..."
+    Copy-Item .env.example .env
+    kubectl create configmap app-config --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+}
 
-# Run other services
-docker compose up -d
+Write-Host "Deploying Kubernetes Manifests..."
+kubectl apply -f k8s/
 
-# Train model
-$response = Invoke-RestMethod -Uri "http://localhost:8008/ml/train" -Method Post
-Write-Host "Title: $($response.title)"
+Write-Host "Waiting for Deployments to become Ready..."
+kubectl wait --for=condition=available deployment --all --timeout=120s
 
-# Wait a bit
-sleep 3
-
-# Open api gateway in browser
-Start-Process "http://localhost:8008"
+Write-Host "Setup Complete! Remember to run 'minikube tunnel' in a separate terminal to route ingress traffic."
