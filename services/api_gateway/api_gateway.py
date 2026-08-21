@@ -1,8 +1,6 @@
 from flask import Flask, jsonify, request, redirect, render_template
 import requests
 import pandas as pd
-import io
-import os
 from config import config
 
 app = Flask(__name__)
@@ -11,14 +9,15 @@ INTERNAL_DATABASE_URL = config.SERVICES["DATABASE_URL"].rstrip("/")
 INTERNAL_ML_ENGINE_URL = config.SERVICES["ML_ENGINE_URL"].rstrip("/")
 FEATURE_NAME_MAPPING = config.FEATURE_NAME_MAPPING
 
-
+# Proxy requests to database
 def _proxy_to_database(path, method):
-    """Forward a request to the database microservice and relay its response.
-
-    This is what lets the dashboard and ml model microservices reach the
-    database through the gateway instead of calling it directly: they hit
-    `/database/...` on the gateway, and the gateway relays the request/
-    response to and from the database microservice.
+    """
+    Forward a request to the database microservice and relay its response.
+    Args:
+        path: HTML path to be sent to
+        method: HTML method to be used
+    Returns:
+        JSON: The json response
     """
     try:
         response = requests.request(
@@ -29,6 +28,7 @@ def _proxy_to_database(path, method):
             timeout=5,
         )
         return jsonify(response.json()), response.status_code
+    
     except requests.exceptions.RequestException as e:
         return jsonify({
             "error": "Database microservice unreachable",
@@ -42,40 +42,44 @@ def _proxy_to_database(path, method):
 def home():
     return render_template('index.html')
 
+# Readme page
+@app.route('/readme')
+def readme():
+    return render_template('readme.html')
 
 # Database page
 @app.route('/database')
 def database_gateway():
     return render_template('database_gateway.html')
 
-
-# ---------------------------------------------------------------------------
-# Proxy routes: forward customer / inference-log requests from the dashboard
-# and ml model microservices through to the database microservice.
-# ---------------------------------------------------------------------------
+# Get or post customers
 @app.route("/database/customers", methods=["GET", "POST"])
 def database_customers():
     return _proxy_to_database("customers", request.method)
 
-
+# Get the full json list of customers
 @app.route("/database/customers/full", methods=["GET"])
 def database_customers_full():
-    """Merged view: all four customer tables joined into one flat record
-    per customer, in a single request - this is what the ML model
-    microservice should call to pull the whole dataset at once."""
+    """
+    Gets the full json list of customers
+    Returns:
+        JSON: Returns 2 key-value pairs, the total count and the actual values nested
+    """
     return _proxy_to_database("customers/full", request.method)
 
-
+# Get a specific customer from their ID
 @app.route("/database/customers/full/<customer_id>", methods=["GET"])
 def database_customer_full(customer_id):
     return _proxy_to_database(f"customers/full/{customer_id}", request.method)
 
-
+# CSV upload
 @app.route("/database/customers/upload", methods=["POST"])
 def database_customers_upload():
     """Forward a CSV file upload to the database microservice's bulk-import
     route. Kept separate from _proxy_to_database because file uploads are
     multipart/form-data, not JSON."""
+
+    # if empty
     if "file" not in request.files:
         return jsonify({"error": "No file provided (expected multipart field 'file')"}), 400
 
@@ -83,22 +87,23 @@ def database_customers_upload():
     try:
         response = requests.post(
             f"{INTERNAL_DATABASE_URL}/customers/upload",
-            files={"file": (upload.filename, upload.stream, upload.mimetype)},
+            files={"file": (upload.filename, upload.stream, upload.mimetype)}, #filename: file name, stream: data, mimetype: data type
             timeout=30,
         )
         return jsonify(response.json()), response.status_code
+    
     except requests.exceptions.RequestException as e:
         return jsonify({
             "error": "Database microservice unreachable",
             "details": str(e)
         }), 502
 
-
+# Another way to get/put/delete customers
 @app.route("/database/customers/<customer_id>", methods=["GET", "PUT", "DELETE"])
 def database_customer(customer_id):
     return _proxy_to_database(f"customers/{customer_id}", request.method)
 
-
+# Get/post inference logs
 @app.route("/database/logs", methods=["GET", "POST"])
 def database_logs():
     return _proxy_to_database("logs", request.method)
@@ -122,6 +127,29 @@ def train_model():
         print(f"Error ({response.status_code}):", response.json())
         return None
 
+# Get ml model info
+@app.route('/ml/model/info')
+def get_model_info():
+    response = requests.get(f'{INTERNAL_ML_ENGINE_URL}/model/info')
+    if response.status_code == 200:
+        print("Got model info successfully:")
+        metadata = response.json()
+        return metadata
+    else:
+        print(f"Error ({response.status_code}):", response.json())
+        return None
+
+# Reload ml model
+@app.route('/ml/model/reload')
+def reload_model():
+    response = requests.post(f'{INTERNAL_ML_ENGINE_URL}/model/reload')
+    if response.status_code == 200:
+        print("Model reloaded successfully:")
+        metadata = response.json()
+        return metadata
+    else:
+        print(f"Error ({response.status_code}):", response.json())
+        return None
 
 # Iterate through CSV rows and send single prediction calls
 @app.route("/ml/predict_csv_single", methods=["POST"])
@@ -164,6 +192,7 @@ def predict_csv_single():
                         "raw_response": pred_data,
                     }
                     results.append(item_result)
+                # If not 200 status code
                 else:
                     results.append({
                         "customer_id": record.get("customer_id", "N/A"),
@@ -171,6 +200,7 @@ def predict_csv_single():
                         "probability": None,
                         "error": pred_resp.text,
                     })
+            # Request error
             except requests.RequestException as item_err:
                 results.append({
                     "customer_id": record.get("customer_id", "N/A"),

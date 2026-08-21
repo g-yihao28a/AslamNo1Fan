@@ -35,9 +35,30 @@
       </a>
     </div>
 
-    <!-- Retrain Feedback Box -->
+    <!-- Model info and reload -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <!-- Get Model Info -->
+      <button 
+        id="getModelBtn"
+        class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
+      >
+        Model Info
+      </button>
+      
+      <!-- Reload Model -->
+      <button 
+        id="reloadModelBtn"
+        class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
+      >
+        Reload Model
+      </button>
+    </div>
+
+    <!-- Feedback Boxes -->
      <!-- Empty at first, shows model training feedback -->
     <div id="trainFeedback" class="hidden text-xs p-3 rounded-xl text-left font-mono"></div>
+    <div id="getModelFeedback" class="hidden text-xs p-3 rounded-xl text-left font-mono"></div>
+    <div id="reloadModelFeedback" class="hidden text-xs p-3 rounded-xl text-left font-mono"></div>
 
     <!-- CSV Single-Prediction Execution Section -->
     <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5 text-left">
@@ -135,17 +156,201 @@
 
         if (!res.ok) throw new Error(data.error || 'Training failed');
 
-        feedback.className = 'text-xs p-3 rounded-xl bg-indigo-950/80 border border-indigo-800 text-indigo-300 block';
+        feedback.className = 'block';
         // when response
-        feedback.innerHTML = `<div>Model retrained successfully.</div><pre class="mt-1 text-[11px] text-slate-400 overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>`;
+        feedback.innerHTML = `
+        <div class="rounded-xl border border-indigo-500/20 bg-slate-950/80 backdrop-blur-sm overflow-hidden shadow-xl">
+          <!-- Header Bar -->
+          <div class="flex items-center justify-between px-3.5 py-2 bg-indigo-950/40 border-b border-indigo-500/20">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-xs font-semibold text-indigo-200 tracking-wide">Model Retrained Successfully</span>
+            </div>
+            <button id="hideTrainModelFeedbackBtn" class="text-[11px] px-2.5 py-1 font-medium text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition-all duration-150 active:scale-95">
+              Close
+            </button>
+          </div>  
+
+          <!-- JSON Body -->
+          <div class="p-3.5">
+            <pre class="text-[11px] font-mono text-slate-300 leading-relaxed overflow-x-auto max-h-80 custom-scrollbar">${JSON.stringify(data, null, 2)}</pre>
+          </div>
+        </div>
+      `;
       } catch (err) {
         // if error
-        feedback.className = 'text-xs p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 block';
-        feedback.innerText = `Training Error: ${err.message}`;
+        feedback.className = 'block';
+        feedback.innerHTML = `
+        <div class="rounded-xl border border-rose-500/20 bg-slate-950/80 backdrop-blur-sm overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between px-3.5 py-2.5 bg-rose-950/40 border-b border-rose-500/20">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
+              <span class="text-xs font-semibold text-rose-200">Training Error: ${err.message}</span>
+            </div>
+            <button id="hideTrainModelFeedbackBtn" class="text-[11px] px-2.5 py-1 font-medium text-rose-300 hover:text-white bg-rose-900/50 hover:bg-rose-800/60 border border-rose-700/60 rounded-lg transition-all duration-150 active:scale-95">
+              Close
+            </button>
+          </div>
+        </div>
+        `;
       } finally {
         // re-enable button after
         btn.disabled = false;
         btn.innerText = 'Train / Retrain Model';
+
+        // Hide feedback button
+        const hideBtn = document.getElementById('hideTrainModelFeedbackBtn');
+        if (hideBtn) {
+          hideBtn.addEventListener('click', () => {
+            feedback.className = 'hidden';
+          });
+        }
+      }
+    });
+
+    // Get model info
+    document.getElementById('getModelBtn').addEventListener('click', async () => {
+      // define variables
+      const feedback = document.getElementById('getModelFeedback');
+      const btn = document.getElementById('getModelBtn');
+
+      // disable button
+      btn.disabled = true;
+      // replace button text
+      btn.innerText = 'Getting model info...';
+      
+      // show hidden feedback text
+      feedback.className = 'text-xs p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 block';
+      feedback.innerText = 'Waiting for response...';
+
+      try {
+        const res = await fetch('/ml/model/info');
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Getting model info failed');
+
+        feedback.className = 'text-xs p-3 rounded-xl bg-indigo-950/80 border border-indigo-800 text-indigo-300 block';
+        // when response
+        feedback.innerHTML = `
+        <div class="rounded-xl border border-indigo-500/20 bg-slate-950/80 backdrop-blur-sm overflow-hidden shadow-xl">
+        <!-- Header Bar -->
+          <div class="flex items-center justify-between px-3.5 py-2 bg-indigo-950/40 border-b border-indigo-500/20">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-xs font-semibold text-indigo-200 tracking-wide">Model Info Loaded</span>
+            </div>
+            <button id="hideModelInfoFeedbackBtn" class="text-[11px] px-2.5 py-1 font-medium text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition-all duration-150 active:scale-95">
+              Close
+            </button>
+          </div>  
+
+          <!-- JSON Body -->
+          <div class="p-3.5">
+            <pre class="text-[11px] font-mono text-slate-300 leading-relaxed overflow-x-auto max-h-80 custom-scrollbar">${JSON.stringify(data, null, 2)}</pre>
+          </div>
+        </div>
+      `;
+      } catch (err) {
+        // if error
+        feedback.className = 'block';
+        feedback.innerHTML = `
+        <div class="rounded-xl border border-rose-500/20 bg-slate-950/80 backdrop-blur-sm overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between px-3.5 py-2.5 bg-rose-950/40 border-b border-rose-500/20">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
+              <span class="text-xs font-semibold text-rose-200">Error: ${err.message}</span>
+            </div>
+            <button id="hideReloadModelFeedbackBtn" class="text-[11px] px-2.5 py-1 font-medium text-rose-300 hover:text-white bg-rose-900/50 hover:bg-rose-800/60 border border-rose-700/60 rounded-lg transition-all duration-150 active:scale-95">
+              Close
+            </button>
+          </div>z
+        </div>
+        `;
+      } finally {
+        // re-enable button after
+        btn.disabled = false;
+        btn.innerText = 'Model Info';
+
+        // Hide feedback button
+        const hideBtn = document.getElementById('hideModelInfoFeedbackBtn');
+        if (hideBtn) {
+          hideBtn.addEventListener('click', () => {
+            feedback.className = 'hidden';
+          });
+        }
+      }
+    });
+
+    // Reload model
+    document.getElementById('reloadModelBtn').addEventListener('click', async () => {
+      // define variables
+      const feedback = document.getElementById('reloadModelFeedback');
+      const btn = document.getElementById('reloadModelBtn');
+
+      // disable button
+      btn.disabled = true;
+      // replace button text
+      btn.innerText = 'Reloading Model...';
+      
+      // show hidden feedback text
+      feedback.className = 'text-xs p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 block';
+      feedback.innerText = 'Waiting for response...';
+
+      try {
+        const res = await fetch('/ml/model/reload');
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Reload failed');
+
+        feedback.className = 'block';
+        // when response
+        feedback.innerHTML = `
+        <div class="rounded-xl border border-indigo-500/20 bg-slate-950/80 backdrop-blur-sm overflow-hidden shadow-xl">
+          <!-- Header Bar -->
+          <div class="flex items-center justify-between px-3.5 py-2 bg-indigo-950/40 border-b border-indigo-500/20">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-xs font-semibold text-indigo-200 tracking-wide">Model Reloaded Successfully</span>
+            </div>
+            <button id="hideReloadModelFeedbackBtn" class="text-[11px] px-2.5 py-1 font-medium text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition-all duration-150 active:scale-95">
+              Close
+            </button>
+          </div>  
+
+          <!-- JSON Body -->
+          <div class="p-3.5">
+            <pre class="text-[11px] font-mono text-slate-300 leading-relaxed overflow-x-auto max-h-80 custom-scrollbar">${JSON.stringify(data, null, 2)}</pre>
+          </div>
+        </div>
+      `;
+      } catch (err) {
+        // if error
+        feedback.className = 'block';
+        feedback.innerHTML = `
+        <div class="rounded-xl border border-rose-500/20 bg-slate-950/80 backdrop-blur-sm overflow-hidden shadow-xl">
+          <div class="flex items-center justify-between px-3.5 py-2.5 bg-rose-950/40 border-b border-rose-500/20">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
+              <span class="text-xs font-semibold text-rose-200">Error: ${err.message}</span>
+            </div>
+            <button id="hideReloadModelFeedbackBtn" class="text-[11px] px-2.5 py-1 font-medium text-rose-300 hover:text-white bg-rose-900/50 hover:bg-rose-800/60 border border-rose-700/60 rounded-lg transition-all duration-150 active:scale-95">
+              Close
+            </button>
+          </div>
+        </div>
+        `;
+      } finally {
+        // re-enable button after
+        btn.disabled = false;
+        btn.innerText = 'Reload Model';
+
+        // Hide feedback button
+        const hideBtn = document.getElementById('hideReloadModelFeedbackBtn');
+        if (hideBtn) {
+          hideBtn.addEventListener('click', () => {
+            feedback.className = 'hidden';
+          });
+        }
       }
     });
 
