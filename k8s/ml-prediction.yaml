@@ -1,0 +1,52 @@
+# Deployment - ML Prediction (Streamlit)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-prediction-deployment
+  namespace: default
+  labels:
+    app: ml-prediction
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-prediction
+  template:
+    metadata:
+      labels:
+        app: ml-prediction
+    spec:
+      containers:
+      - name: ml-prediction
+        # Local compose build: docker compose build ml_prediction
+        # Then for Minikube: minikube image load aslamno1fan-ml_prediction:latest
+        image: hongheng/ml_prediction:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8011
+        envFrom:
+        - configMapRef:
+            name: config
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+---
+# Service - ML Prediction Internal DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-prediction-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: ml-prediction
+  ports:
+  - protocol: TCP
+    port: 8011
+    targetPort: 8011
