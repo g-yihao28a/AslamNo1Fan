@@ -106,6 +106,7 @@ services:
   # Dashboard
   dashboard:
     build: ./services/dashboard
+    image: nigelnakajima/dashboard:v1
     container_name: telco_dashboard
     ports:
       - "${DASHBOARD_PORT:-8501}:${DASHBOARD_PORT:-8501}"
