@@ -4,9 +4,7 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 
-from config import config as app_config
 from data_access import load_customer_data
-from feature_options import FEATURE_OPTIONS
 
 from flask import Flask
 
