@@ -21,7 +21,7 @@ spec:
         # Local compose build: docker compose build ml_prediction
         # Then for Minikube: minikube image load aslamno1fan-ml_prediction:latest
         image: hongheng/ml_prediction:v1
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         command: ["streamlit"]
         args:
           - "run"

@@ -18,7 +18,7 @@ spec:
       containers:
       - name: dashboard
         image: nigelnakajima/dashboard:v1
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         command: ["streamlit"]
         args:
           - "run"
