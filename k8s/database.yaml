@@ -44,7 +44,7 @@ spec:
     spec:
       containers:
       - name: database
-        image: nigelnakajima/telco-database:latest
+        image: nigelnakajima/telco-database:v1
         ports:
         - containerPort: 5432
         
@@ -118,7 +118,7 @@ spec:
     spec:
       containers:
       - name: database-service
-        image: nigelnakajima/telco-database-service:latest
+        image: nigelnakajima/telco-database-service:v1
         imagePullPolicy: Always
         ports:
         - containerPort: 8012
@@ -190,8 +190,8 @@ spec:
             
       containers:
         - name: db-loader
-          image: nigelnakajima/telco-database-loader:latest
-          
+          image: nigelnakajima/telco-database-loader:v1
+          imagePullPolicy: Never
           # Environment variables passed to the loader script
           env:
             - name: DB_HOST
