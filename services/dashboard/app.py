@@ -304,41 +304,7 @@ with tab_overview:
 
         st.divider()
 
-        # -------------------------------------------------------------
-        # 7. High-risk archetype — Contract x Referrals heatmap
-        # -------------------------------------------------------------
-        st.subheader("🔥 High-risk archetype")
-        if has_cols(filtered, ["contract", "number_of_referrals"]):
-            heat_df = filtered.copy()
-            heat_df["referral_bucket"] = pd.cut(
-                heat_df["number_of_referrals"],
-                bins=[-1, 0, 2, float("inf")],
-                labels=["0", "1-2", "3+"],
-            )
-            pivot = (
-                heat_df.pivot_table(
-                    index="contract",
-                    columns="referral_bucket",
-                    values="churn_value",
-                    aggfunc="mean",
-                    observed=True,
-                )
-                * 100
-            )
-            fig9 = px.imshow(
-                pivot,
-                text_auto=".1f",
-                color_continuous_scale="Reds",
-                labels=dict(x="Referrals", y="Contract", color="Churn rate (%)"),
-                title="Churn rate (%): Contract type × Number of referrals",
-            )
-            st.plotly_chart(fig9, width='stretch')
-            st.caption(
-                "The hottest cell is your call list: e.g. month-to-month "
-                "customers with zero referrals are typically the highest-risk segment."
-            )
-        else:
-            st.caption("Contract and/or referral data not available for the heatmap.")
+
 
 # ---------------------------------------------------------------------------
 # Data Versioning — snapshots are created only when the live dataframe changes.
