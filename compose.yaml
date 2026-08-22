@@ -1,14 +1,15 @@
 services:
-  # 1. Database — Postgres, auto-loads schema from init_scripts/ on first boot
+  # Internal Database
   database:
     build: ./services/database
+    image: nigelnakajima/telco-database:v1
     container_name: telco_database
     environment:
-      POSTGRES_DB: ${DB_NAME:-telco_churn_db}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${INTERNAL_DB_NAME:-telco_churn_db}
+      POSTGRES_USER: ${INTERNAL_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${INTERNAL_DB_PASSWORD:-postgrespassword}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${INTERNAL_DB_PORT:-5432}:${INTERNAL_DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,11 +20,13 @@ services:
     networks:
       - backend-net
 
-  # One-off job: loads the real Excel data into the database tables.
+  # Database loader
+  # One-off job: loads the Excel data into the database tables
   # Run explicitly with: docker compose run --rm db_loader
   db_loader:
     build: ./services/database/loader
     container_name: telco_db_loader
+    image: nigelnakajima/telco-database-loader:v1
     environment:
       DB_HOST: database
       DB_PORT: 5432
@@ -36,13 +39,15 @@ services:
     depends_on:
       database:
         condition: service_healthy
-    profiles:
-      - tools
     networks:
       - backend-net
-
+    profiles:
+      - tools
+  
+  # Database service (to interact with internal database)
   database_service:
     build: ./services/database/api
+    image: nigelnakajima/telco-database-service:v1
     container_name: telco_database_service
     environment:
       DB_HOST: database
@@ -52,7 +57,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
 
     ports:
-      - "5000:5000"
+      - "${DB_SERVICE_PORT:-8012}:${DB_SERVICE_PORT:-8012}"
 
     depends_on:
       database:
@@ -61,9 +66,10 @@ services:
     networks:
       - backend-net
 
-  # 2. ML engine — trains + serves the churn prediction model
+  # ML engine
   ml_engine:
     build: ./services/ml_engine
+    image: hongheng/ml_engine:v1
     container_name: telco_ml_engine
     ports:
       - "${ML_ENGINE_PORT:-8010}:${ML_ENGINE_PORT:-8010}"
@@ -73,44 +79,59 @@ services:
       - "./data/telco_data:/data:ro"
       - ml_model_data:/app/model
     depends_on:
-      database:
+      database_service:
         condition: service_healthy
     networks:
       - backend-net
 
-  # 3. Dashboard — Streamlit, interactive charts + a live "predict churn" panel
+  #  Prediction service
+  ml_prediction:
+    build: ./services/ml_prediction
+    image: hongheng/ml_prediction:v1
+    container_name: telco_ml_prediction
+    ports:
+      - "${ML_PREDICTION_PORT:-8011}:${ML_PREDICTION_PORT:-8011}"
+    env_file:
+      - .env
+    depends_on:
+      ml_engine:
+        condition: service_started
+      database_service:
+        condition: service_healthy
+    networks:
+      - backend-net
+      
+  # Dashboard
   dashboard:
-    build:
-      context: ./services/dashboard
+    build: ./services/dashboard
+    image: nigelnakajima/dashboard:v1
     container_name: telco_dashboard
     ports:
       - "${DASHBOARD_PORT:-8501}:${DASHBOARD_PORT:-8501}"
     environment:
       DASHBOARD_PORT: ${DASHBOARD_PORT:-8501}
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-telco_churn_db}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
     depends_on:
-      database:
+      database_service:
         condition: service_healthy
     networks:
       - backend-net
 
-  # 4. API gateway — single entrypoint that proxies to ml_engine / dashboard
+  #  API gateway
   api_gateway:
     build: ./services/api_gateway
+    image: nigelnakajima/api_gateway:v1
     container_name: telco_api_gateway
     ports:
       - "${GATEWAY_PORT:-8008}:${GATEWAY_PORT:-8008}"
     env_file:
       - .env
-    
     depends_on:
-      database:
+      ml_engine:
+        condition: service_started
+      dashboard:
+        condition: service_started
+      database_service:
         condition: service_healthy
-
     networks:
       - backend-net
 

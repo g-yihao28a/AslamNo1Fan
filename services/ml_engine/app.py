@@ -1,8 +1,10 @@
 import json
 import os
+import io
 
 import joblib
-import psycopg2
+import requests
+import pandas as pd
 from flask import Flask, jsonify, request
 
 from config import config
@@ -28,30 +30,24 @@ _load_model()
 
 
 def _log_inference(customer_id, probability, prediction, model_version):
-    """Best-effort write to inference_logs. Never blocks a prediction response."""
+    """Best-effort write to inference_logs, via the API gateway's
+    /database/logs route rather than a direct Postgres connection. Never
+    blocks a prediction response."""
     if not customer_id:
         return
     try:
-        conn = psycopg2.connect(
-            host=config.DB_HOST,
-            port=config.DB_PORT,
-            dbname=config.DB_NAME,
-            user=config.DB_USER,
-            password=config.DB_PASSWORD,
-            connect_timeout=3,
+        requests.post(
+            f"{config.API_GATEWAY_URL.rstrip('/')}/database/logs",
+            json={
+                "customer_id": customer_id,
+                "churn_probability": probability,
+                "predicted_churn": prediction,
+                "model_version": model_version,
+            },
+            timeout=3,
         )
-        with conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO inference_logs
-                    (customer_id, churn_probability, predicted_churn, model_version)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (customer_id, probability, prediction, model_version),
-            )
-        conn.close()
-    except Exception as exc:
-        app.logger.warning(f"Could not log inference to DB: {exc}")
+    except requests.exceptions.RequestException as exc:
+        app.logger.warning(f"Could not log inference via gateway: {exc}")
 
 
 @app.route("/health", methods=["GET"])
@@ -74,11 +70,17 @@ def train():
     """Trains (or retrains) the churn model and reloads it into memory."""
     try:
         metadata = train_model()
-    except Exception as exc:
-        return {"error": str(exc)}, 500
+        # Guard clause: ensure train_model() didn't silently return None
+        if metadata is None:
+            metadata = {"status": "success", "message": "Model trained, no metadata returned."}
 
-    _load_model()
-    return jsonify(metadata), 200
+        # Reload model into memory
+        _load_model()
+        return jsonify(metadata), 200
+    
+    except Exception as exc:
+        # Always wrap error dictionaries in jsonify() to return a valid Flask response
+        return jsonify({"error": str(exc)}), 500    
 
 
 @app.route("/predict", methods=["POST"])
@@ -92,6 +94,36 @@ def predict():
     if not payload:
         return {"error": "Request body must be JSON."}, 400
 
+    # ---------------------------------------------------------------------------
+    # Fallback normalization: map snake_case and type variations to ALL_FEATURES
+    # ---------------------------------------------------------------------------
+    feature_fallbacks = {
+        "tenure_in_months": "Tenure Months",
+        "tenure_months": "Tenure Months",
+        "monthly_charge": "Monthly Charges",
+        "monthly_charges": "Monthly Charges",
+        "total_charges": "Total Charges",
+        "gender": "Gender",
+        "senior_citizen": "Senior Citizen",
+        "partner": "Partner",
+        "dependents": "Dependents",
+        "phone_service": "Phone Service",
+        "multiple_lines": "Multiple Lines",
+        "internet_service": "Internet Service",
+        "online_security": "Online Security",
+        "online_backup": "Online Backup",
+        "device_protection": "Device Protection",
+        "tech_support": "Tech Support",
+        "streaming_tv": "Streaming TV",
+        "streaming_movies": "Streaming Movies",
+        "contract": "Contract",
+        "paperless_billing": "Paperless Billing",
+        "payment_method": "Payment Method",
+    }
+    for k, v in list(payload.items()):
+        if k in feature_fallbacks and feature_fallbacks[k] not in payload:
+            payload[feature_fallbacks[k]] = v
+
     missing = [f for f in ALL_FEATURES if f not in payload]
     if missing:
         return {
@@ -101,7 +133,14 @@ def predict():
         }, 400
 
     row = {f: payload[f] for f in ALL_FEATURES}
-    import pandas as pd
+
+    # Numeric coercion for single row DataFrame
+    for num_col in ["Tenure Months", "Monthly Charges", "Total Charges"]:
+        if num_col in row and row[num_col] is not None:
+            try:
+                row[num_col] = float(row[num_col])
+            except (ValueError, TypeError):
+                row[num_col] = 0.0
 
     X = pd.DataFrame([row])
 
@@ -123,6 +162,100 @@ def predict():
             "model_version": model_version,
         }
     ), 200
+
+@app.route("/predict/batch", methods=["POST"])
+def predict_batch():
+    if _pipeline is None:
+        return jsonify({"error": "No trained model available yet. Call POST /train first."}), 503
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided (expected multipart field 'file')"}), 400
+
+    upload = request.files["file"]
+    filename = upload.filename.lower()
+
+    try:
+        if filename.endswith(".csv"):
+            df = pd.read_csv(upload.stream)
+        elif filename.endswith((".xlsx", ".xls")):
+            df = pd.read_excel(upload.stream)
+        else:
+            return jsonify({"error": "Unsupported file type. Use .csv, .xlsx, or .xls"}), 400
+
+        col_mapping = {
+            "tenure_in_months": "Tenure Months",
+            "tenure_months": "Tenure Months",
+            "monthly_charge": "Monthly Charges",
+            "monthly_charges": "Monthly Charges",
+            "total_charges": "Total Charges",
+            "gender": "Gender",
+            "senior_citizen": "Senior Citizen",
+            "partner": "Partner",
+            "dependents": "Dependents",
+            "phone_service": "Phone Service",
+            "multiple_lines": "Multiple Lines",
+            "internet_service": "Internet Service",
+            "online_security": "Online Security",
+            "online_backup": "Online Backup",
+            "device_protection": "Device Protection",
+            "tech_support": "Tech Support",
+            "streaming_tv": "Streaming TV",
+            "streaming_movies": "Streaming Movies",
+            "contract": "Contract",
+            "paperless_billing": "Paperless Billing",
+            "payment_method": "Payment Method",
+        }
+        df = df.rename(columns=col_mapping)
+
+        for col in ["Tenure Months", "Monthly Charges", "Total Charges"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+        missing = [c for c in ALL_FEATURES if c not in df.columns]
+        if missing:
+            return jsonify({"error": f"Uploaded dataset is missing required features: {missing}"}), 400
+
+        X = df[ALL_FEATURES]
+        probabilities = _pipeline.predict_proba(X)[:, 1]
+        predictions = _pipeline.predict(X)
+
+        cust_ids = df["customer_id"].tolist() if "customer_id" in df.columns else [f"ROW_{i+1}" for i in range(len(df))]
+        model_version = _metadata.get("model_version") if _metadata else None
+
+        results = []
+        for cid, prob, pred in zip(cust_ids, probabilities, predictions):
+            prob_float = float(round(prob, 4))
+            pred_bool = bool(pred)
+            risk = "High" if prob_float >= 0.7 else ("Medium" if prob_float >= 0.4 else "Low")
+
+            results.append({
+                "customer_id": cid,
+                "churn_probability": prob_float,
+                "probability": prob_float,
+                "predicted_churn": pred_bool,
+                "prediction": "Yes" if pred_bool else "No",
+                "risk_level": risk,
+                "model_version": model_version,
+            })
+
+        return jsonify({"predictions": results, "total_records": len(results)}), 200
+
+    except Exception as exc:
+        return jsonify({"error": f"Batch prediction failed: {str(exc)}"}), 500
+
+
+@app.route("/model/reload", methods=["POST"])
+def model_reload():
+    try:
+        _load_model()
+        return jsonify({
+            "status": "Model and metadata reloaded successfully",
+            "model_loaded": _pipeline is not None,
+            "version": _metadata.get("model_version") if _metadata else None,
+        }), 200
+    except Exception as exc:
+        return jsonify({"error": f"Reload failed: {str(exc)}"}), 500
+
 
 if __name__ == "__main__":
     print(f"ML Engine starting on http://localhost:{config.ML_ENGINE_PORT}")

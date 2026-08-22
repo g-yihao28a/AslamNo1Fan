@@ -15,12 +15,11 @@ class Config:
         os.path.join("data", "telco_data", "Telco_customer_churn.xlsx"),
     )
 
-    # Database connection, used only to log predictions to inference_logs
-    DB_HOST = os.getenv("DB_HOST", "database")
-    DB_PORT = os.getenv("DB_PORT", "5432")
-    DB_NAME = os.getenv("DB_NAME", "telco_churn_db")
-    DB_USER = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "postgrespassword")
-
+    # Where to reach the API gateway from inside the ml_engine container.
+    # Predictions are logged to inference_logs through the gateway's
+    # /database/logs route instead of connecting to Postgres directly.
+    GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api-gateway-service")
+    GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", 8008))
+    API_GATEWAY_URL = f"http://{GATEWAY_NAME}:{GATEWAY_PORT}"
 
 config = Config()

@@ -1,0 +1,63 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: telco-churn-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
+    # Enable sticky sessions using cookies
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: telco-churn.local
+    http:
+      paths:
+      # All these for routing to dashboard
+      - path: /dashboard
+        pathType: Prefix
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 8501
+
+      - path: /static
+        pathType: Prefix
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 8501
+
+      - path: /_stcore
+        pathType: Prefix
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 8501
+
+      - path: /ml_prediction
+        pathType: Prefix
+        backend:
+          service:
+            name: ml-prediction-service
+            port:
+              number: 8011
+              
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8008

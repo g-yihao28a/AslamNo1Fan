@@ -1,28 +1,30 @@
-CREATE TABLE IF NOT EXISTS customer_location (
+-- Single combined table: one row per customer holding all location,
+-- demographics, services and status fields together (previously spread
+-- across customer_location / customer_demographics / customer_services /
+-- customer_status). Combined here so the API and its consumers deal with
+-- one dataset instead of stitching four tables together on every read.
+CREATE TABLE IF NOT EXISTS customers (
     customer_id VARCHAR(50) PRIMARY KEY,
+
+    -- location
     country VARCHAR(50),
     state VARCHAR(50),
     city VARCHAR(100),
     zip_code VARCHAR(10),
     lat_long VARCHAR(100),
     latitude NUMERIC(10, 6),
-    longitude NUMERIC(10, 6)
-);
+    longitude NUMERIC(10, 6),
 
-CREATE TABLE IF NOT EXISTS customer_demographics (
-    customer_id VARCHAR(50) PRIMARY KEY,
+    -- demographics
     gender VARCHAR(10),
     age INT,
-    under_18 VARCHAR(5),
+    under_30 VARCHAR(5),
     senior_citizen VARCHAR(5),
     partner VARCHAR(5),
     dependents VARCHAR(5),
     number_of_dependents INT,
-    FOREIGN KEY (customer_id) REFERENCES customer_location(customer_id) ON DELETE CASCADE
-);
 
-CREATE TABLE IF NOT EXISTS customer_services (
-    customer_id VARCHAR(50) PRIMARY KEY,
+    -- services
     tenure_in_months INT,
     phone_service VARCHAR(5),
     multiple_lines VARCHAR(20),
@@ -39,11 +41,8 @@ CREATE TABLE IF NOT EXISTS customer_services (
     payment_method VARCHAR(30),
     monthly_charge NUMERIC(10, 2),
     total_charges NUMERIC(10, 2),
-    FOREIGN KEY (customer_id) REFERENCES customer_location(customer_id) ON DELETE CASCADE
-);
 
-CREATE TABLE IF NOT EXISTS customer_status (
-    customer_id VARCHAR(50) PRIMARY KEY,
+    -- status
     satisfaction_score INT,
     customer_status VARCHAR(20),
     churn_label VARCHAR(5),
@@ -51,16 +50,18 @@ CREATE TABLE IF NOT EXISTS customer_status (
     churn_score INT,
     cltv INT,
     churn_category VARCHAR(50),
-    churn_reason TEXT,
-    FOREIGN KEY (customer_id) REFERENCES customer_location(customer_id) ON DELETE CASCADE
+    churn_reason TEXT
 );
 
 CREATE TABLE IF NOT EXISTS inference_logs (
     inference_id SERIAL PRIMARY KEY,
+    -- No FK to customers: the prediction form supports scoring hypothetical
+    -- "what-if" customers (arbitrary feature values, not tied to any real
+    -- customer_id in the customers table), so we can't require the ID to
+    -- already exist. A FK here made every manual prediction fail silently.
     customer_id VARCHAR(50) NOT NULL,
     churn_probability NUMERIC(5, 4),
     predicted_churn BOOLEAN NOT NULL,
     model_version VARCHAR(20) DEFAULT 'v1.0',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customer_location(customer_id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

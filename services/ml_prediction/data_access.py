@@ -4,18 +4,9 @@ import streamlit as st
 from dotenv import load_dotenv
 from pathlib import Path
 import os
+from config import config
 
-# Get the directory of the current Python file
-BASE_DIR = Path(__file__).resolve().parent
-
-# Locate the .env file 2 levels up
-ENV_PATH = BASE_DIR.parent.parent / ".env"
-
-load_dotenv()
-
-GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api-gateway-service")
-GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", 8008))
-GATEWAY_URL = f"http://{GATEWAY_NAME}:{GATEWAY_PORT}"
+GATEWAY_URL = config.SERVICES["API_GATEWAY_URL"]
 
 
 @st.cache_data(ttl=60)

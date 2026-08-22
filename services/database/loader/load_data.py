@@ -1,5 +1,7 @@
 """
-Loads the real Telco customer churn Excel files into the Postgres database.
+Loads the real Telco customer churn Excel files into the Postgres database,
+merging all four source files into a single combined dataset (one row per
+customer) that gets upserted into the `customers` table.
 
 Run this once after the database container is up and the schema has been
 created (01-schema.sql runs automatically on first container start).
@@ -36,7 +38,7 @@ def load_excel(filename):
     return pd.read_excel(path)
 
 
-def load_location(engine):
+def _read_location():
     df = load_excel("Telco_customer_churn_location.xlsx")
     df = df.rename(
         columns={
@@ -62,18 +64,17 @@ def load_location(engine):
         ]
     ]
     df["zip_code"] = df["zip_code"].astype(str)
-    _upsert(engine, df, "customer_location", "customer_id")
-    return len(df)
+    return df
 
 
-def load_demographics(engine):
+def _read_demographics():
     df = load_excel("Telco_customer_churn_demographics.xlsx")
-    df = df.rename(
+    return df.rename(
         columns={
             "Customer ID": "customer_id",
             "Gender": "gender",
             "Age": "age",
-            "Under 30": "under_18",
+            "Under 30": "under_30",
             "Senior Citizen": "senior_citizen",
             "Married": "partner",
             "Dependents": "dependents",
@@ -84,18 +85,16 @@ def load_demographics(engine):
             "customer_id",
             "gender",
             "age",
-            "under_18",
+            "under_30",
             "senior_citizen",
             "partner",
             "dependents",
             "number_of_dependents",
         ]
     ]
-    _upsert(engine, df, "customer_demographics", "customer_id")
-    return len(df)
 
 
-def load_services(engine):
+def _read_services():
     df = load_excel("Telco_customer_churn_services.xlsx")
     df = df.rename(
         columns={
@@ -139,12 +138,10 @@ def load_services(engine):
         ]
     ]
     # dedupe: services file has one row per customer per quarter in some exports
-    df = df.drop_duplicates(subset="customer_id", keep="last")
-    _upsert(engine, df, "customer_services", "customer_id")
-    return len(df)
+    return df.drop_duplicates(subset="customer_id", keep="last")
 
 
-def load_status(engine):
+def _read_status():
     df = load_excel("Telco_customer_churn_status.xlsx")
     df = df.rename(
         columns={
@@ -171,9 +168,20 @@ def load_status(engine):
             "churn_reason",
         ]
     ]
-    df = df.drop_duplicates(subset="customer_id", keep="last")
-    _upsert(engine, df, "customer_status", "customer_id")
-    return len(df)
+    return df.drop_duplicates(subset="customer_id", keep="last")
+
+
+def build_combined_dataset():
+    """Merges all four source files into one row per customer_id.
+
+    Uses outer joins so a customer present in only some of the files still
+    ends up in the combined dataset (with NULLs for the fields it's missing
+    from), rather than being silently dropped.
+    """
+    df = _read_location()
+    for other in (_read_demographics(), _read_services(), _read_status()):
+        df = df.merge(other, on="customer_id", how="outer")
+    return df
 
 
 def _upsert(engine, df, table, pk_col):
@@ -208,18 +216,12 @@ def main():
         print(f"Could not connect to the database: {exc}")
         sys.exit(1)
 
-    # order matters: location is the parent table (other tables FK to it)
-    n_loc = load_location(engine)
-    print(f"customer_location: {n_loc} rows")
+    print("Reading and merging all four source files into one dataset...")
+    combined = build_combined_dataset()
+    print(f"Combined dataset: {len(combined)} customers, {len(combined.columns)} columns")
 
-    n_demo = load_demographics(engine)
-    print(f"customer_demographics: {n_demo} rows")
-
-    n_serv = load_services(engine)
-    print(f"customer_services: {n_serv} rows")
-
-    n_status = load_status(engine)
-    print(f"customer_status: {n_status} rows")
+    _upsert(engine, combined, "customers", "customer_id")
+    print(f"customers: {len(combined)} rows")
 
     print("Done.")
 

@@ -1,0 +1,234 @@
+# Secret - Stores database credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secrets
+  namespace: default
+type: Opaque
+stringData:
+  DB_USER: postgres
+  DB_PASSWORD: postgrespassword
+---
+# PersistentVolumeClaim - Persistent storage for Postgres data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce                # Only one pod can mount this at a time
+  resources:
+    requests:
+      storage: 2Gi
+---
+# Deployment - Postgres Database
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database
+  namespace: default
+  labels:
+    app: database
+spec:
+  replicas: 1                      # Single instance
+  selector:
+    matchLabels:
+      app: database
+
+  # Pod template
+  template:
+    metadata:
+      labels:
+        app: database              # Label for pods
+    spec:
+      containers:
+      - name: database
+        image: nigelnakajima/telco-database:v1
+        ports:
+        - containerPort: 5432
+        
+        # Environment variables passed to the postgres container
+        env:
+        - name: POSTGRES_DB
+          value: "telco_churn_db"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: DB_PASSWORD
+              
+        # Mount the persistent volume to the container
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+          
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1024Mi"
+
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+---
+# Service - Database Internal DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: database                   # DNS name used by other microservices to call this app
+  namespace: default
+spec:
+  type: ClusterIP                  # Internal-only network access
+  selector:
+    app: database                  # Routes incoming traffic to pods matching this label
+  ports:
+  - protocol: TCP
+    port: 5432                     # Port other services call internally
+    targetPort: 5432               # Port the database listens on
+---
+# Deployment - Flask API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-service
+  namespace: default
+  labels:
+    app: database-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-service
+
+  # Pod template
+  template:
+    metadata:
+      labels:
+        app: database-service      # Label for pods
+    spec:
+      containers:
+      - name: database-service
+        image: nigelnakajima/telco-database-service:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8012
+        
+        # Environment variables passed to application
+        env:
+        - name: DB_HOST
+          value: "database"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "telco_churn_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: DB_PASSWORD
+              
+        # Resource allocation limits (prevents one service from crashing the node)
+        resources:
+          requests:                # Minimum guaranteed resources
+            cpu: "100m"            # 100 millicores (0.1 CPU core)
+            memory: "128Mi"
+          limits:                  # Maximum allowed resources before throttling/restart
+            cpu: "500m"            # 500 millicores (0.5 CPU core)
+            memory: "512Mi"
+---
+# Service - Flask API Internal DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-service           # DNS name used by other microservices to call this app
+  namespace: default
+spec:
+  type: ClusterIP                  # Internal-only network access
+  selector:
+    app: database-service          # Routes incoming traffic to pods matching this label
+  ports:
+  - protocol: TCP
+    port: 8012                     # Port other services call internally
+    targetPort: 8012               # Port your application listens on
+---
+# Job - Data Loader (One-off task)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-loader
+  namespace: default
+  labels:
+    app: db-loader
+spec:
+  ttlSecondsAfterFinished: 10
+  backoffLimit: 5                  # Retry up to 5 times on failure
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-db
+          image: postgres:16-alpine
+          command:
+            - 'sh'
+            - '-c'
+            - 'until pg_isready -h database -p 5432 -U postgres; do echo "Waiting for PostgreSQL to be ready..."; sleep 2; done;'
+            
+      containers:
+        - name: db-loader
+          image: nigelnakajima/telco-database-loader:v1
+          imagePullPolicy: Never
+          # Environment variables passed to the loader script
+          env:
+            - name: DB_HOST
+              value: "database"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "telco_churn_db"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-secrets
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secrets
+                  key: DB_PASSWORD
+            - name: DATA_DIR
+              value: "/data"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: database-service-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: database-service
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

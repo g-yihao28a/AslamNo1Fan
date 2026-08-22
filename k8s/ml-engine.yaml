@@ -1,0 +1,84 @@
+# Persistent volume for trained model (compose: ml_model_data → /app/model)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-model-data
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Deployment - ML Engine
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-engine-deployment
+  namespace: default
+  labels:
+    app: ml-engine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-engine
+  template:
+    metadata:
+      labels:
+        app: ml-engine
+    spec:
+      containers:
+      - name: ml-engine
+        image: hongheng/ml_engine:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8010
+        envFrom:
+        - configMapRef:
+            name: config
+        env:
+        - name: MODEL_DIR
+          value: /app/model
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/model
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8010
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8010
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: ml-model-data
+---
+# Service - ML Engine Internal DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-engine-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: ml-engine
+  ports:
+  - protocol: TCP
+    port: 8010
+    targetPort: 8010

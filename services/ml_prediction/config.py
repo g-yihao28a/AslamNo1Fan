@@ -36,27 +36,22 @@ class Config:
         "DATABASE_URL": f"http://{DATABASE_NAME}:{DATABASE_PORT}",
     }
 
-    FEATURE_NAME_MAPPING = {
-    "tenure_in_months": "Tenure Months",
-    "tenure_months": "Tenure Months",
-    "monthly_charge": "Monthly Charges",
-    "monthly_charges": "Monthly Charges",
-    "total_charges": "Total Charges",
-    "gender": "Gender",
-    "senior_citizen": "Senior Citizen",
-    "partner": "Partner",
-    "dependents": "Dependents",
-    "phone_service": "Phone Service",
-    "multiple_lines": "Multiple Lines",
-    "internet_service": "Internet Service",
-    "online_security": "Online Security",
-    "online_backup": "Online Backup",
-    "device_protection": "Device Protection",
-    "tech_support": "Tech Support",
-    "streaming_tv": "Streaming TV",
-    "streaming_movies": "Streaming Movies",
-    "contract": "Contract",
-    "paperless_billing": "Paperless Billing",
-    "payment_method": "Payment Method",
+    # Feature options for ml model
+    FEATURE_OPTIONS = {
+    "Gender": ["Male", "Female"],
+    "Senior Citizen": ["Yes", "No"],
+    "Partner": ["Yes", "No"],
+    "Dependents": ["Yes", "No"],
+    "Phone Service": ["Yes", "No"],
+    "Internet Service": ["DSL", "Fiber optic", "No"],
+    "Contract": ["Month-to-month", "One year", "Two year"],
+    "Paperless Billing": ["Yes", "No"],
+    "Payment Method": [
+        "Electronic check",
+        "Mailed check",
+        "Bank transfer (automatic)",
+        "Credit card (automatic)",
+    ],
 }
+    
 config = Config()
