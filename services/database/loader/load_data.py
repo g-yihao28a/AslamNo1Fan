@@ -85,7 +85,7 @@ def _read_demographics():
             "customer_id",
             "gender",
             "age",
-            "under_18",
+            "under_30",
             "senior_citizen",
             "partner",
             "dependents",
