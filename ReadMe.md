@@ -10,7 +10,7 @@ api_gateway
 
 ## First-time setup
 Windows:
-  Run in Powrshell: `.\setup.ps1`
+  Run in Powershell: `.\setup.ps1`
 
 ## Everyday use
 
