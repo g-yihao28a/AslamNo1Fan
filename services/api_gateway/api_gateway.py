@@ -122,22 +122,35 @@ def train_model():
     if response.status_code == 200:
         print("Model retrained successfully:")
         metadata = response.json()
-        return metadata
+        return jsonify(metadata), 200
     else:
-        print(f"Error ({response.status_code}):", response.json())
-        return None
+        return jsonify({
+                        "error": "ML engine returned an error",
+                        "details": response.text
+                    }), response.status_code
 
 # Get ml model info
 @app.route('/ml/model/info')
 def get_model_info():
-    response = requests.get(f'{INTERNAL_ML_ENGINE_URL}/model/info')
-    if response.status_code == 200:
-        print("Got model info successfully:")
-        metadata = response.json()
-        return metadata
-    else:
-        print(f"Error ({response.status_code}):", response.json())
-        return None
+    try:
+        response = requests.get(f'{INTERNAL_ML_ENGINE_URL}/model/info', timeout=5)
+        
+        # If upstream service responded, pass back its JSON and exact status code
+        if response.status_code == 200:
+            return jsonify(response.json()), 200
+        else:
+            return jsonify({
+                "error": "ML engine returned an error",
+                "details": response.text
+            }), response.status_code
+
+    except requests.exceptions.RequestException as e:
+        # Handles connection errors (e.g. downstream pod down or wrong DNS name)
+        print(f"Failed to connect to ML Engine: {e}")
+        return jsonify({
+            "error": "Unable to connect to downstream ML service",
+            "details": str(e)
+        }), 503
 
 # Reload ml model
 @app.route('/ml/model/reload')
@@ -146,10 +159,12 @@ def reload_model():
     if response.status_code == 200:
         print("Model reloaded successfully:")
         metadata = response.json()
-        return metadata
+        return jsonify(metadata), 200
     else:
-        print(f"Error ({response.status_code}):", response.json())
-        return None
+        return jsonify({
+                        "error": "ML engine returned an error",
+                        "details": response.text
+                    }), response.status_code
 
 # Iterate through CSV rows and send single prediction calls
 @app.route("/ml/predict_csv_single", methods=["POST"])
@@ -218,7 +233,7 @@ def predict_csv_single():
 # Redirect to prediction service
 @app.route("/ml_prediction", methods=["GET"])
 def redirect_to_prediction():
-    external_prediction_url = config.EXTERNAL_URLS["ML_PREDICTION_URL"]
+    external_prediction_url = config.SERVICES["ML_PREDICTION_URL"]
     return redirect(external_prediction_url, code=302)
 
 

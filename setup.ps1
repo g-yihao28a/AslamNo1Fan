@@ -1,22 +1,58 @@
-# Copies .env.example
-Copy-Item -Path ".env.example" -Destination ".env"
-Write-Host ".env file created from .env.example"
+# setup.ps1
+$Domain = "telco-churn.local"
+$HostsPath = "$env:windir\System32\drivers\etc\hosts"
 
-# Start internal database
-docker compose up -d database
+# Check if mapping already exists
+$HostsContent = Get-Content $HostsPath -ErrorAction SilentlyContinue
+if ($HostsContent -notmatch "127\.0\.0\.1\s+$Domain") {
+    Write-Host "Adding $Domain to hosts file..."
+    
+    # Run an elevated PowerShell process to append to hosts file safely
+    $Command = "Add-Content -Path '$HostsPath' -Value '`n127.0.0.1 $Domain'"
+    Start-Process powershell -Verb RunAs -ArgumentList "-Command $Command" -Wait
+    
+    # Flush local DNS cache
+    ipconfig /flushdns | Out-Null
+    Write-Host "Host mapping added and DNS flushed successfully!"
+} else {
+    Write-Host "Host mapping for $Domain already exists."
+}
 
-# Run db loader
-docker compose run --rm -d db_loader
+# Check minikube is intialised
+Write-Host "Checking Minikube Status..."
+if ((minikube status) -notmatch "Running") {
+    minikube start --driver=docker
+}
 
-# Run other services
-docker compose up -d
+# Enable ingress add on
+Write-Host " Enabling Required Minikube Addons..."
+minikube addons enable ingress
 
-# Train model
-$response = Invoke-RestMethod -Uri "http://localhost:8008/ml/train" -Method Post
-Write-Host "Title: $($response.title)"
+# Create configmap from .env
+Write-Host "Creating ConfigMap from .env..." 
+if (Test-Path ".env") {
+    kubectl create configmap config --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+} else {
+    # If .env not found
+    Write-Warning ".env file not found. Copying .env.example to .env..."
+    Copy-Item .env.example .env
+    kubectl create configmap config --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+}
+
+# Apply manifest files
+Write-Host "Deploying Kubernetes Manifests..."
+kubectl apply -f k8s/
+
+# Wait for deployments to start
+Write-Host "Waiting for Deployments to become Ready..."
+kubectl wait --for=condition=available deployment --all --timeout=120s
+
+# Start minikube tunnel
+Write-Host "Launching Minikube Tunnel in a new Administrator window..."
+
+# Opens a separate PowerShell window running minikube tunnel as Admin
+Start-Process powershell -Verb RunAs -ArgumentList "-NoExit -Command minikube tunnel"
+Write-Host "Setup complete! Keep the opened tunnel window running."
 
 # Wait a bit
-sleep 3
-
-# Open api gateway in browser
-Start-Process "http://localhost:8008"
+Start-Sleep -Seconds 10

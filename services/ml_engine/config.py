@@ -18,7 +18,7 @@ class Config:
     # Where to reach the API gateway from inside the ml_engine container.
     # Predictions are logged to inference_logs through the gateway's
     # /database/logs route instead of connecting to Postgres directly.
-    GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api_gateway")
+    GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api-gateway-service")
     GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", 8008))
     API_GATEWAY_URL = os.getenv(
         "API_GATEWAY_URL", f"http://{GATEWAY_NAME}:{GATEWAY_PORT}"

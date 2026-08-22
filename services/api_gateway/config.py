@@ -15,10 +15,10 @@ load_dotenv()
 class Config:
 # ---- Service Names ----
     GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api-gateway")
-    ML_ENGINE_NAME = os.getenv("ML_ENGINE_NAME", "ml-engine")
-    DASHBOARD_NAME = os.getenv("DASHBOARD_NAME", "dashboard")
+    ML_ENGINE_NAME = os.getenv("ML_ENGINE_NAME", "ml-engine-service")
+    DASHBOARD_NAME = os.getenv("DASHBOARD_NAME", "dashboard-service")
     DATABASE_NAME = os.getenv("DATABASE_NAME", "database-service")
-    ML_PREDICTION_NAME = os.getenv("ML_PREDICTION_NAME","ml-prediction")
+    ML_PREDICTION_NAME = os.getenv("ML_PREDICTION_NAME","ml-prediction-service")
 
     # ---- Ports ----
     GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", 8008))
@@ -37,14 +37,6 @@ class Config:
     }
 
     # ---- External URLs (Host Machine / Browser Access) ----
-    # EXTERNAL_URLS = {
-    #     "API_GATEWAY_URL": f"http://localhost:{GATEWAY_PORT}",
-    #     "ML_ENGINE_URL": f"http://localhost:{ML_ENGINE_PORT}",
-    #     "ML_PREDICTION_URL": f"http://localhost:{ML_PREDICTION_PORT}",
-    #     "DASHBOARD_URL": f"http://localhost:{DASHBOARD_PORT}",
-    #     "DATABASE_URL": f"http://localhost:{DATABASE_PORT}",
-    # }
-
     EXTERNAL_URLS = {
     "API_GATEWAY_URL": f"http://telco-churn.local:{GATEWAY_PORT}",
     "ML_ENGINE_URL": f"http://telco-churn.local:{ML_ENGINE_PORT}",

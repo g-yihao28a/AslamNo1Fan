@@ -9,11 +9,10 @@ dashboard
 api_gateway
 
 ## First-time setup
-Run setup.ps1 (Windows)
+Windows:
+  Run in Powrshell: `.\setup.ps1`
 
 ## Everyday use
-Run start.ps1 to start (Windows)
-Run stop.ps1 to stop (Windows)
 
 ## Notes
 

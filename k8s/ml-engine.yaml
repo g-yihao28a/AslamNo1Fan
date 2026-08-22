@@ -35,7 +35,7 @@ spec:
         # Local compose build: docker compose build ml_engine
         # Then for Minikube: minikube image load aslamno1fan-ml_engine:latest
         image: hongheng/ml_engine:v1
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8010
         envFrom:

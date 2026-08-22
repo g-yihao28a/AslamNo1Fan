@@ -4,6 +4,8 @@ metadata:
   name: telco-churn-ingress
   namespace: default
   annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
@@ -44,6 +46,14 @@ spec:
             port:
               number: 8501
 
+      - path: /ml_prediction
+        pathType: Prefix
+        backend:
+          service:
+            name: ml-prediction-service
+            port:
+              number: 8011
+              
       - path: /
         pathType: Prefix
         backend:
