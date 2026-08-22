@@ -7,7 +7,7 @@ metadata:
   labels:
     app: api-gateway
 spec:
-  replicas: 5
+  replicas: 1
   selector:
     matchLabels:
       app: api-gateway
@@ -35,7 +35,6 @@ spec:
           limits:                  # Maximum allowed resources before throttling/restart
             cpu: "500m"            # 500 millicores (0.5 CPU core)
             memory: "512Mi"
-
 ---
 # Service
 apiVersion: v1
@@ -51,3 +50,23 @@ spec:
   - protocol: TCP
     port: 8008                     # Port other services call internally
     targetPort: 8008               # Port your application listens on
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway-deployment
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70   # Target average CPU at 70%
