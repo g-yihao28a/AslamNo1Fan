@@ -166,6 +166,36 @@ def reload_model():
                         "details": response.text
                     }), response.status_code
 
+@app.route("/ml/predict", methods=["POST"])
+def predict_proxy():
+    """
+    Proxies prediction requests from the frontend/UI to the internal ML Engine.
+    """
+    try:
+        # Extract JSON payload from incoming request
+        payload = request.get_json(silent=True)
+        if payload is None:
+            return jsonify({"error": "Invalid or missing JSON payload"}), 400
+
+        # Forward payload to internal ML Engine service
+        ml_response = requests.post(
+            f"{config.SERVICES["ML_ENGINE_URL"]}/predict",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+        # Relay ML Engine response status code and JSON back
+        return (ml_response.content, ml_response.status_code, ml_response.headers.items())
+
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "ML Engine service timed out"}), 504
+
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Unable to connect to internal ML Engine service"}), 503
+
+    except requests.exceptions.RequestException as exc:
+        return jsonify({"error": f"API Gateway proxy failed: {str(exc)}"}), 500
+    
 # Iterate through CSV rows and send single prediction calls
 @app.route("/ml/predict_csv_single", methods=["POST"])
 def predict_csv_single():
@@ -240,7 +270,7 @@ def redirect_to_prediction():
 # Redirect to dashboard service
 @app.route("/dashboard", methods=["GET"])
 def redirect_to_dashboard():
-    external_dashboard_url = config.EXTERNAL_URLS["DASHBOARD_URL"]
+    external_dashboard_url = config.SERVICES["DASHBOARD_URL"]
     return redirect(external_dashboard_url, code=302)
 
 

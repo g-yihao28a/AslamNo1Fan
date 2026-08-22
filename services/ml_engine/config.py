@@ -20,9 +20,6 @@ class Config:
     # /database/logs route instead of connecting to Postgres directly.
     GATEWAY_NAME = os.getenv("GATEWAY_NAME", "api-gateway-service")
     GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", 8008))
-    API_GATEWAY_URL = os.getenv(
-        "API_GATEWAY_URL", f"http://{GATEWAY_NAME}:{GATEWAY_PORT}"
-    )
-
+    API_GATEWAY_URL = f"http://{GATEWAY_NAME}:{GATEWAY_PORT}"
 
 config = Config()

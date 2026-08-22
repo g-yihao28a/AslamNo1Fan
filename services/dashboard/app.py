@@ -4,7 +4,6 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 from data_access import load_customer_data, load_inference_logs
-from feature_options import FEATURE_OPTIONS
 
 st.set_page_config(page_title="Telco Churn Dashboard", layout="wide")
 

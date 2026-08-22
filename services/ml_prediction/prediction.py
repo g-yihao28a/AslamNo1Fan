@@ -80,7 +80,7 @@ with tab_predict:
         # API Request to ML service to do prediction
         try:
             resp = requests.post(
-                f"{config.SERVICES['ML_ENGINE_URL']}/predict", json=payload, timeout=10
+                f"{config.SERVICES['API_GATEWAY_URL']}/ml/predict", json=payload, timeout=10
             )
             if resp.status_code == 200:
                 result = resp.json()

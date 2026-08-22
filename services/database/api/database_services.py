@@ -5,6 +5,7 @@ import psycopg2.extras
 import os
 
 app = Flask(__name__)
+DATABASE_PORT = int(os.getenv("DB_SERVICE_PORT", 8012))
 
 # Allow the API gateway (and, through it, the dashboard / ml model
 # microservices) to call this service cross-origin.
@@ -64,7 +65,7 @@ ALL_CUSTOMER_FIELDS = [
     # location
     "country", "state", "city", "zip_code", "lat_long", "latitude", "longitude",
     # demographics
-    "gender", "age", "under_18", "senior_citizen", "partner",
+    "gender", "age", "under_30", "senior_citizen", "partner",
     "dependents", "number_of_dependents",
     # services
     "tenure_in_months", "phone_service", "multiple_lines", "internet_service",
@@ -457,6 +458,7 @@ def get_logs():
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=DATABASE_PORT,
         debug=True
     )
+    
