@@ -2,7 +2,7 @@ services:
   # Internal Database
   database:
     build: ./services/database
-    image: nigelnakajima/telco-database:latest
+    image: nigelnakajima/telco-database:v1
     container_name: telco_database
     environment:
       POSTGRES_DB: ${INTERNAL_DB_NAME:-telco_churn_db}
@@ -26,7 +26,7 @@ services:
   db_loader:
     build: ./services/database/loader
     container_name: telco_db_loader
-    image: nigelnakajima/telco-database-loader:latest
+    image: nigelnakajima/telco-database-loader:v1
     environment:
       DB_HOST: database
       DB_PORT: 5432
@@ -47,7 +47,7 @@ services:
   # Database service (to interact with internal database)
   database_service:
     build: ./services/database/api
-    image: nigelnakajima/telco-database-service:latest
+    image: nigelnakajima/telco-database-service:v1
     container_name: telco_database_service
     environment:
       DB_HOST: database
