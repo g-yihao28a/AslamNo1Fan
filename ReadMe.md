@@ -10,12 +10,9 @@ api_gateway
 
 ## First-time setup
 Windows:
-  In po: `Add-Content -Path C:\Windows\System32\drivers\etc\hosts -Value "127.0.0.1 telco-churn.local"`
-  Run setup.ps1
+  Run in Powrshell: `.\setup.ps1`
 
 ## Everyday use
-Run start.ps1 to start (Windows)
-Run stop.ps1 to stop (Windows)
 
 ## Notes
 
