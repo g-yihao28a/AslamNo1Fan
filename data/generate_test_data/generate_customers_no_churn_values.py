@@ -9,7 +9,7 @@ np.random.seed(42)
 # Generate IDs
 id_nums = np.arange(1, NUM_RECORDS + 1)
 char_strings = ["".join(np.random.choice(list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"), size=5)) for _ in range(NUM_RECORDS)]
-customer_ids = [f"{n:05d}-{c}" for n, c in zip(id_nums, char_strings)]
+customer_ids = [f"{n:04d}-{c}" for n, c in zip(id_nums, char_strings)]
 
 # Demographic features
 gender = np.random.choice(["Male", "Female"], size=NUM_RECORDS)

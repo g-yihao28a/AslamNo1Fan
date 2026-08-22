@@ -16,6 +16,7 @@ _pipeline = None
 _metadata = None
 
 
+
 def _load_model():
     """Load the trained pipeline into memory (if it exists)."""
     global _pipeline, _metadata
@@ -24,10 +25,6 @@ def _load_model():
     if os.path.exists(config.METADATA_PATH):
         with open(config.METADATA_PATH) as f:
             _metadata = json.load(f)
-
-
-_load_model()
-
 
 def _log_inference(customer_id, probability, prediction, model_version):
     """Best-effort write to inference_logs, via the API gateway's
@@ -256,6 +253,12 @@ def model_reload():
     except Exception as exc:
         return jsonify({"error": f"Reload failed: {str(exc)}"}), 500
 
+# Creates app context to handle training during start up (So train model can communicate with db)
+with app.app_context():
+    if not os.path.exists(config.MODEL_PATH):
+        print("No trained model found. Triggering initial training run...")
+        train_model()
+    _load_model()
 
 if __name__ == "__main__":
     print(f"ML Engine starting on http://localhost:{config.ML_ENGINE_PORT}")

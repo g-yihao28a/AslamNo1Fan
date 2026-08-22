@@ -32,7 +32,7 @@ spec:
       containers:
       - name: ml-engine
         image: hongheng/ml_engine:v1
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8010
         envFrom:

@@ -2,7 +2,7 @@ import csv
 import random
 
 # For database input option
-NUM_RECORDS = 10000
+NUM_RECORDS = 25
 OUTPUT_FILE = "generated_customers.csv"
 
 # Real California locations matching the dataset distribution
@@ -44,7 +44,7 @@ CHURN_REASONS = {
 }
 
 HEADERS = [
-    "customer_id", "gender", "age", "under_18", "senior_citizen", "partner",
+    "customer_id", "gender", "age", "under_30", "senior_citizen", "partner",
     "dependents", "number_of_dependents", "country", "state", "city", "zip_code",
     "latitude", "longitude", "lat_long", "phone_service", "multiple_lines",
     "internet_service", "internet_type", "online_security", "online_backup",
@@ -56,12 +56,12 @@ HEADERS = [
 
 rows = []
 for i in range(1, NUM_RECORDS + 1):
-    # Customer ID format (e.g., 00010-ABCDE)
+    # Customer ID format (e.g., 00001-ABCDE)
     cust_id = f"{i:04d}-{''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=5))}"
     
     gender = random.choice(["Male", "Female"])
-    age = random.randint(19, 80)
-    under_18 = "Yes" if age < 18 else "No"
+    age = random.randint(18, 80)
+    under_30 = "Yes" if age < 30 else "No"
     senior_citizen = "Yes" if age >= 65 else "No"
     
     partner = random.choice(["Yes", "No"])
@@ -119,7 +119,7 @@ for i in range(1, NUM_RECORDS + 1):
         reason = ""
         
     rows.append([
-        cust_id, gender, age, under_18, senior_citizen, partner, has_deps,
+        cust_id, gender, age, under_30, senior_citizen, partner, has_deps,
         num_deps, "United States", "California", loc["city"], loc["zip"],
         str(lat), str(lng), f'"{lat_long}"', phone_svc, mult_lines, inet_svc,
         inet_type, sec, backup, protect, tech, tv, movies, contract,
