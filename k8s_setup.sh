@@ -100,5 +100,10 @@ else
     echo -e "Navigate to ${CYAN}http://$DOMAIN${NC} in your browser."
 fi
 
-# Wait a bit
-sleep 10
+echo -e "\n${GREEN}Press [ENTER] to stop minikube tunnel and exit.${NC}"
+read -r
+
+# Clean up background tunnel process on exit
+if [ -n "$TUNNEL_PID" ]; then
+    sudo kill "$TUNNEL_PID" 2>/dev/null || true
+fi
