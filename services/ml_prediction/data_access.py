@@ -1,10 +1,12 @@
 import pandas as pd
 import requests
 import streamlit as st
-
+from dotenv import load_dotenv
+from pathlib import Path
+import os
 from config import config
 
-API_GATEWAY_URL = config.SERVICES["API_GATEWAY_URL"].rstrip("/")
+GATEWAY_URL = config.SERVICES["API_GATEWAY_URL"]
 
 
 @st.cache_data(ttl=60)
@@ -12,8 +14,17 @@ def load_customer_data():
     """Pulls the whole combined customer dataset through the API gateway
     (gateway -> database microservice -> Postgres), instead of connecting
     to Postgres directly."""
-    response = requests.get(f"{API_GATEWAY_URL}/database/customers/full", timeout=30)
-    response.raise_for_status()
+    try:
+        response = requests.get(f"{GATEWAY_URL}/database/customers/full", timeout=30)
+        # Raises an HTTPError if status code is 4xx or 5xx
+        response.raise_for_status() 
+        data = response.json()
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP Error {response.status_code}: {response.text}")
+        raise e
+    except requests.exceptions.RequestException as e:
+        print(f"Connection Error: {e}")
+        raise e
     payload = response.json()
     return pd.DataFrame(payload.get("customers", []))
 
@@ -22,7 +33,7 @@ def load_customer_data():
 def load_inference_logs(limit=200):
     try:
         response = requests.get(
-            f"{API_GATEWAY_URL}/database/logs",
+            f"{GATEWAY_URL}/database/logs",
             params={"limit": limit},
             timeout=10,
         )

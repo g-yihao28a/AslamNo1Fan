@@ -1,6 +1,6 @@
 INSERT INTO customers (
     customer_id, country, state, city, zip_code, lat_long, latitude, longitude,
-    gender, age, under_18, senior_citizen, partner, dependents, number_of_dependents,
+    gender, age, under_30, senior_citizen, partner, dependents, number_of_dependents,
     tenure_in_months, phone_service, multiple_lines, internet_service, internet_type,
     online_security, online_backup, device_protection, tech_support, streaming_tv,
     streaming_movies, contract, paperless_billing, payment_method, monthly_charge, total_charges,

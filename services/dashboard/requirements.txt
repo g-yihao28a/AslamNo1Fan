@@ -4,3 +4,4 @@ numpy
 plotly
 requests
 flask
+python-dotenv
