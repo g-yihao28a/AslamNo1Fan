@@ -64,7 +64,7 @@ ALL_CUSTOMER_FIELDS = [
     # location
     "country", "state", "city", "zip_code", "lat_long", "latitude", "longitude",
     # demographics
-    "gender", "age", "under_18", "senior_citizen", "partner",
+    "gender", "age", "under_30", "senior_citizen", "partner",
     "dependents", "number_of_dependents",
     # services
     "tenure_in_months", "phone_service", "multiple_lines", "internet_service",
