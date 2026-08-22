@@ -10,7 +10,6 @@ spec:
   resources:
     requests:
       storage: 1Gi
-
 ---
 # Deployment - ML Engine
 apiVersion: apps/v1
@@ -32,8 +31,6 @@ spec:
     spec:
       containers:
       - name: ml-engine
-        # Local compose build: docker compose build ml_engine
-        # Then for Minikube: minikube image load aslamno1fan-ml_engine:latest
         image: hongheng/ml_engine:v1
         imagePullPolicy: Always
         ports:
@@ -70,7 +67,6 @@ spec:
       - name: model-storage
         persistentVolumeClaim:
           claimName: ml-model-data
-
 ---
 # Service - ML Engine Internal DNS
 apiVersion: v1

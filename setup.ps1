@@ -27,6 +27,17 @@ if ((minikube status) -notmatch "Running") {
 # Enable ingress add on
 Write-Host " Enabling Required Minikube Addons..."
 minikube addons enable ingress
+minikube addons enable metrics-server
+
+Write-Host " Waiting for Minikube Addons to initialize and become ready..."
+
+# Wait for ingress-nginx controller to be ready
+Write-Host "-> Waiting for Ingress Controller..."
+kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=120s
+
+# Wait for metrics-server deployment to be ready
+Write-Host "-> Waiting for Metrics Server..."
+kubectl rollout status deployment/metrics-server -n kube-system --timeout=120s
 
 # Create configmap from .env
 Write-Host "Creating ConfigMap from .env..." 
@@ -54,5 +65,4 @@ Write-Host "Launching Minikube Tunnel in a new Administrator window..."
 Start-Process powershell -Verb RunAs -ArgumentList "-NoExit -Command minikube tunnel"
 Write-Host "Setup complete! Keep the opened tunnel window running."
 
-# Wait a bit
-Start-Sleep -Seconds 10
+Start-Process "http://telco-churn.local"

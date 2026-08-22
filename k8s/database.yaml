@@ -8,7 +8,6 @@ type: Opaque
 stringData:
   DB_USER: postgres
   DB_PASSWORD: postgrespassword
-
 ---
 # PersistentVolumeClaim - Persistent storage for Postgres data
 apiVersion: v1
@@ -22,7 +21,6 @@ spec:
   resources:
     requests:
       storage: 2Gi
-
 ---
 # Deployment - Postgres Database
 apiVersion: apps/v1
@@ -70,11 +68,18 @@ spec:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
           
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1024Mi"
+
       volumes:
       - name: postgres-storage
         persistentVolumeClaim:
           claimName: postgres-pvc
-
 ---
 # Service - Database Internal DNS
 apiVersion: v1
@@ -90,7 +95,6 @@ spec:
   - protocol: TCP
     port: 5432                     # Port other services call internally
     targetPort: 5432               # Port the database listens on
-
 ---
 # Deployment - Flask API
 apiVersion: apps/v1
@@ -146,7 +150,6 @@ spec:
           limits:                  # Maximum allowed resources before throttling/restart
             cpu: "500m"            # 500 millicores (0.5 CPU core)
             memory: "512Mi"
-
 ---
 # Service - Flask API Internal DNS
 apiVersion: v1
@@ -162,7 +165,6 @@ spec:
   - protocol: TCP
     port: 5000                     # Port other services call internally
     targetPort: 5000               # Port your application listens on
-
 ---
 # Job - Data Loader (One-off task)
 apiVersion: batch/v1
@@ -208,3 +210,23 @@ spec:
                   key: DB_PASSWORD
             - name: DATA_DIR
               value: "/data"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: database-service-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: database-service
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
