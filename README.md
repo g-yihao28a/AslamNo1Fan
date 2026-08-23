@@ -9,7 +9,6 @@ An end-to-end AI pipeline designed to predict customer churn in real time. Built
 
 Repo Directory Structure
 ```text
-AslamNo1Fan
 ├── data
 │   ├── generate_test_data
 │   │   ├── generate_customers_no_churn_values.py
@@ -47,6 +46,7 @@ AslamNo1Fan
 │   │   ├── app.py
 │   │   ├── data_access.py
 │   │   ├── Dockerfile
+│   │   ├── README.md
 │   │   └── requirements.txt
 │   ├── database
 │   │   ├── api
@@ -85,10 +85,10 @@ AslamNo1Fan
 │       ├── data_access.py
 │       ├── Dockerfile
 │       ├── prediction.py
+│       ├── README.md
 │       └── requirements.txt
 ├── .env.example
 ├── .gitignore
-├── build-and-deploy.ps1
 ├── compose.yaml
 ├── docker_db_loader.ps1
 ├── docker_db_loader.sh
@@ -107,7 +107,7 @@ AslamNo1Fan
 ├── k8s_setup.ps1
 ├── k8s_setup.sh
 ├── nginx.conf
-└── ReadMe.md
+└── README.md
 ```
 
 
