@@ -5,9 +5,6 @@ import pandas as pd
 import numpy as np
 
 from data_access import load_customer_data
-from flask import Flask
-
-app = Flask(__name__)
 
 st.set_page_config(page_title="Telco Churn Dashboard", layout="wide")
 
