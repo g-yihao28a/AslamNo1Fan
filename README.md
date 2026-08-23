@@ -7,7 +7,7 @@ An end-to-end AI pipeline designed to predict customer churn in real time. Built
 - Decoupled Architecture: Maintain scalability, reliability and fault tolerance across the system through 5 decoupled microservices (API Gateway, Database, ML Engine, ML Prediction, Dashboard 
 - Ability to retrain Model: Ability to retrain and update the model with new data ingested.
 
-Repo Directory Structure
+# Repo Directory Structure
 ```text
 ├── data
 │   ├── generate_test_data
@@ -302,6 +302,48 @@ Deletes all Kubernetes resources within the cluster for a clean reinstall
   # Example with flags:
   bash k8s_delete_all.sh --FullDelete
   ```
+
+## System Architecture Flowchart
+
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontFamily': 'arial',
+    'fontSize': '14px'
+  },
+  'flowchart': {
+    'curve': 'smooth'
+  }
+}}%%
+graph TD
+    Client([Browser])
+
+    subgraph Entrypoint [Gateway Layer]
+        Ingress[Ingress Controller]
+        A[API Gateway]
+    end
+
+    subgraph Frontend [Frontend Services]
+        B[Dashboard UI]
+        C[ML Prediction UI]
+    end
+
+    subgraph Backend [Backend Services]
+        D[ML Engine]
+        E[Database Service]
+        F[(Database)]
+    end
+
+    Client -->|HTTP Traffic| Ingress
+    Ingress -->|Routes Requests| A
+
+    A <-->|Redirects/Proxies| B
+    A <-->|Redirects/Proxies| C
+    A <-->|Proxies| D
+    A <-->|Proxies| E
+    E <-->|Read & Write Data| F
+```
 
 ## Microservices Overview
 
