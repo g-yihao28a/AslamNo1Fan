@@ -13,11 +13,14 @@ The service communicates exclusively through the API Gateway (`GATEWAY_URL` conf
 - `GET /database/logs` – Retrieves recent inference logs
 - `GET /database/customers/full` – Pulls full customer datasets for analysis 
 
-Form fields include customer ID, tenure, monthly/total charges, and the
-categorical features in `config.FEATURE_OPTIONS` (gender, contract, internet
-service, payment method, etc.). Fields not shown in the form are sent as
-defaults (`"No"` for add-on services such as Online Security).
+### Feature Options
+Form controls are configured in `config.py` to match the expected schema:
+- **Demographics**: Gender, Senior Citizen, Partner, Dependents
+- **Services**: Phone Service, Internet Service
+- **Billing & Contract**: Contract length, Paperless Billing, Payment Method, Tenure (months), Monthly Charges, Total Charges
 
+
+The microservice runs as a Streamlit application on port `8011`. Submitting a prediction automatically generates a unique `Customer ID` (or accepts a manual ID), posts the payload to the API gateway, displays live probability metrics, and instantly updates the history log tab.
 
 The UI does not train or load the model itself. `POST /train` on `ml_engine`
 must succeed first (see `services/ml_engine/README.md`), otherwise Predict
