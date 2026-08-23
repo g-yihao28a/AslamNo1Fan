@@ -6,13 +6,6 @@ inputs and posts them through the API gateway to `ml_engine`.
 - **Predict Churn**  – form that builds a customer payload and calls the ML engine live
 - **Recent Predictions** – last inference logs (customer_id, probability, predicted_churn, model_version)
 
-### API Integration & Data Access
-The service communicates exclusively through the API Gateway (`GATEWAY_URL` configured in `config.py`), isolating it from direct database or ML engine access:
-
-- `POST /ml/predict` – Receives customer feature payloads and returns calculated churn probabilities and binary risk predictions (`likely to churn` / `likely to stay`).
-- `GET /database/logs` – Retrieves recent inference logs
-- `GET /database/customers/full` – Pulls full customer datasets for analysis 
-
 ### Feature Options
 Form controls are configured in `config.py` to match the expected schema:
 - **Demographics**: Gender, Senior Citizen, Partner, Dependents
