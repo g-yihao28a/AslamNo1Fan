@@ -1,12 +1,17 @@
 # ML Prediction Microservice (Telco Churn)
-
 Streamlit UI for scoring a customer against the churn model. Collects feature
-inputs, posts them through the API gateway to `ml_engine`, and shows recent
-inference logs from the database service.
+inputs and posts them through the API gateway to `ml_engine`.
 
 ## Tabs
 - **Predict Churn**  – form that builds a customer payload and calls the ML engine live
 - **Recent Predictions** – last inference logs (customer_id, probability, predicted_churn, model_version)
+
+### API Integration & Data Access
+The service communicates exclusively through the API Gateway (`GATEWAY_URL` configured in `config.py`), isolating it from direct database or ML engine access:
+
+- `POST /ml/predict` – Receives customer feature payloads and returns calculated churn probabilities and binary risk predictions (`likely to churn` / `likely to stay`).
+- `GET /database/logs` – Retrieves recent inference logs
+- `GET /database/customers/full` – Pulls full customer datasets for analysis 
 
 Form fields include customer ID, tenure, monthly/total charges, and the
 categorical features in `config.FEATURE_OPTIONS` (gender, contract, internet
