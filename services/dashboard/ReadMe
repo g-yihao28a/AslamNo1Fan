@@ -102,7 +102,7 @@ The Streamlit service uses the environment variables `GATEWAY_NAME` and `GATEWAY
 
 ---
 
-# 🛠 Technology Stack
+# Technology Stack
 
 | Component | Technology |
 |---|---|
