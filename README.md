@@ -310,10 +310,13 @@ Deletes all Kubernetes resources within the cluster for a clean reinstall
   'theme': 'dark',
   'themeVariables': {
     'fontFamily': 'arial',
-    'fontSize': '14px'
+    'fontSize': '14px',
+    'edgeLabelBackground': 'transparent',
+    'tertiaryColor': 'transparent'
   },
   'flowchart': {
-    'curve': 'smooth'
+    'curve': 'smooth',
+    'htmlLabels': false
   }
 }}%%
 graph TD
@@ -335,7 +338,7 @@ graph TD
         F[(Database)]
     end
 
-    Client -->|HTTP Traffic| Ingress
+    Client -->|HTTP| Ingress
     Ingress -->|Routes Requests| A
 
     A <-->|Redirects/Proxies| B
