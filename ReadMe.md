@@ -8,7 +8,106 @@ An end-to-end AI pipeline designed to predict customer churn in real time. Built
 - Ability to retrain Model: Ability to retrain and update the model with new data ingested.
 
 Repo Directory Structure
-[INSERT HERE ADSDASDASD]
+AslamNo1Fan
+├── data
+│   ├── generate_test_data
+│   │   ├── generate_customers_no_churn_values.py
+│   │   └── generate_customers_with_churn_values.py
+│   ├── telco_data
+│   │   ├── CustomerChurn.xlsx
+│   │   ├── Telco_customer_churn_demographics.xlsx
+│   │   ├── Telco_customer_churn_location.xlsx
+│   │   ├── Telco_customer_churn_population.xlsx
+│   │   ├── Telco_customer_churn_services.xlsx
+│   │   ├── Telco_customer_churn_status.xlsx
+│   │   └── Telco_customer_churn.xlsx
+│   ├── Company_Data(For ML Prediction).csv
+│   └── generated_customers.csv
+├── k8s
+│   ├── api-gateway.yaml
+│   ├── dashboard.yaml
+│   ├── database.yaml
+│   ├── ingress.yaml
+│   ├── ml-engine.yaml
+│   └── ml-prediction.yaml
+├── services
+│   ├── api_gateway
+│   │   ├── templates
+│   │   │   ├── database_gateway.html
+│   │   │   ├── index.html
+│   │   │   ├── ml_gateway.html
+│   │   │   └── readme.html
+│   │   ├── api_gateway.py
+│   │   ├── config.py
+│   │   ├── Dockerfile
+│   │   ├── README.md
+│   │   └── requirements.txt
+│   ├── dashboard
+│   │   ├── app.py
+│   │   ├── data_access.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   ├── database
+│   │   ├── api
+│   │   │   ├── database_services.py
+│   │   │   ├── Dockerfile
+│   │   │   └── requirements.txt
+│   │   ├── init_scripts
+│   │   │   ├── 01-schema.sql
+│   │   │   └── 02-seed.sql
+│   │   ├── loader
+│   │   │   ├── data_files
+│   │   │   │   ├── CustomerChurn.xlsx
+│   │   │   │   ├── Telco_customer_churn_demographics.xlsx
+│   │   │   │   ├── Telco_customer_churn_location.xlsx
+│   │   │   │   ├── Telco_customer_churn_population.xlsx
+│   │   │   │   ├── Telco_customer_churn_services.xlsx
+│   │   │   │   ├── Telco_customer_churn_status.xlsx
+│   │   │   │   └── Telco_customer_churn.xlsx
+│   │   │   ├── Dockerfile
+│   │   │   ├── load_data.py
+│   │   │   └── requirements.txt
+│   │   ├── .dockerignore
+│   │   ├── Dockerfile
+│   │   └── README.md
+│   ├── ml_engine
+│   │   ├── model
+│   │   │   └── .gitkeep
+│   │   ├── app.py
+│   │   ├── config.py
+│   │   ├── Dockerfile
+│   │   ├── README.md
+│   │   ├── requirements.txt
+│   │   └── train.py
+│   └── ml_prediction
+│       ├── config.py
+│       ├── data_access.py
+│       ├── Dockerfile
+│       ├── prediction.py
+│       └── requirements.txt
+├── .env.example
+├── .gitignore
+├── build-and-deploy.ps1
+├── compose.yaml
+├── docker_db_loader.ps1
+├── docker_db_loader.sh
+├── docker_rebuild.ps1
+├── docker_rebuild.sh
+├── docker_setup.ps1
+├── docker_setup.sh
+├── docker_stop.ps1
+├── docker_stop.sh
+├── k8s_db_loader.ps1
+├── k8s_db_loader.sh
+├── k8s_delete_all.ps1
+├── k8s_delete_all.sh
+├── k8s_redeploy.ps1
+├── k8s_redeploy.sh
+├── k8s_setup.ps1
+├── k8s_setup.sh
+├── nginx.conf
+└── ReadMe.md
+
 
 
 ## Application Setup & Management Guide
