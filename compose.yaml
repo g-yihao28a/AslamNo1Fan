@@ -104,6 +104,8 @@ services:
     env_file:
       - .env
     depends_on:
+      api-gateway-service:
+        condition: service_healthy
       ml-engine-service:
         condition: service_healthy
     healthcheck:
@@ -125,6 +127,8 @@ services:
       DASHBOARD_PORT: ${DASHBOARD_PORT:-8501}
     depends_on:
       database-service:
+        condition: service_healthy
+      api-gateway-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
