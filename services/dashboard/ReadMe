@@ -1,0 +1,369 @@
+A streamlit customer churn analytics dashboard for exploring Telco customer data.
+Port: 8501
+
+The dashboard retrieves customer information through:
+Dashboard -> AOI gateway -> database service -> PostgreSQL
+The data-access layer sends customer-data requests through the API Gateway rather than connecting directly to PostgreSQL.
+The dashboard decoupled from the database layer and allows the application to operate as part of the microservice architecture.
+
+Features:
+1. Customer filters
+  - Phone service
+  - Multiple lines
+  - Internet service
+  - Internet type
+  - Online security
+  - Online backup
+  - Contract
+  - Paperless billing
+  - Payment method
+  - Gender
+  - Senior citizen status
+  - Dependents
+
+2. Overview
+  - KPI summary
+  - Feature importance
+  - Contract and tenure analysis
+  - Financial analysis
+  - Age and referral analysis
+  - Payment and internet service analysis
+
+
+3. Custom Charts
+   - Select historical/current data versions #Charts can be created from different saved data versions and added to a dashboard for continued viewing.
+   - Create custom charts:
+      - Bar charts
+      - Line charts
+      - Histograms
+      - Box plots
+      - Scatter plots
+      - Pie charts
+      - Correlation heatmaps
+
+   - Select columns dynamically
+   - Choose aggregation methods
+   - Save charts to a personal dashboard
+
+
+
+Data Versioning
+The application automatically stores unique snapshots of the customer dataset during the Streamlit session.
+
+Allowing users to:
+- Select previous data versions
+- Compare previous and current snapshots
+- Create charts based on a specific version
+- Preserve the data source associated with a saved custom chart
+
+---
+
+# 🏗 Architecture
+
+## High-Level Architecture
+
+```text
+                         ┌──────────────────────┐
+                         │       Browser        │
+                         │   Streamlit Client   │
+                         └──────────┬───────────┘
+                                    │
+                                    │ HTTP :8501
+                                    ▼
+                         ┌──────────────────────┐
+                         │   Streamlit Service  │
+                         │                      │
+                         │   app.py             │
+                         │   data_access.py     │
+                         └──────────┬───────────┘
+                                    │
+                                    │ HTTP
+                                    │ /database/customers/full
+                                    ▼
+                         ┌──────────────────────┐
+                         │     API Gateway      │
+                         │   api-gateway-service│
+                         │       :8008          │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │ Database Microservice│
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │      PostgreSQL      │
+                         │      Database        │
+                         └──────────────────────┘
+```
+
+The Streamlit service uses the environment variables `GATEWAY_NAME` and `GATEWAY_PORT` to construct the API Gateway URL.
+
+---
+
+# 🛠 Technology Stack
+
+| Component | Technology |
+|---|---|
+| Programming Language | Python 3.12 |
+| Dashboard Framework | Streamlit |
+| Data Processing | Pandas |
+| Numerical Processing | NumPy |
+| Visualization | Plotly Express |
+| HTTP Client | Requests |
+| Configuration | python-dotenv |
+| Containerization | Docker |
+| API Communication | HTTP/REST |
+| Database Access | Through API Gateway |
+| Backend Database | PostgreSQL |
+| Default Application Port | 8501 |
+
+---
+
+## `app.py`
+The main dashboard application.
+Responsibilities:
+- Rendering dashboard
+- Apply filters
+- Calculating KPIs
+- Creating visualizations
+- Managing data versions for viewing
+- Creating custom charts
+
+
+---
+
+## `data_access.py`
+
+Provides the data-access functions used by the Dashboard application.
+
+The customer dataset is retrieved through the API Gateway:
+
+```text
+GET /database/customers/full
+```
+
+The response is converted into a Pandas DataFrame.
+
+---
+
+## `requirements.txt`
+
+Contains the Python dependencies required by the service.
+
+At minimum, the requirements should cover the packages imported by the application and data-access layer, including:
+
+```text
+streamlit
+pandas
+numpy
+requests
+plotly
+python-dotenv
+flask
+```
+
+The exact versions should be maintained in the project's `requirements.txt`.
+
+---
+
+# Dockerfile
+
+Defines how the dashboard service is packaged and executed as a docker container.
+
+---
+
+
+
+# Environment Variables
+
+The service uses environment variables to determine where the API Gateway is located.
+
+
+# API Dependency
+
+The dashboard depends on an API Gateway being reachable from the dashboard  container.
+
+# Dockerfile Explanation
+
+```dockerfile
+FROM python:3.12-slim
+```
+Python 3.12 base image.
+
+---
+
+## Working Directory
+
+```dockerfile
+WORKDIR /app
+```
+
+All application files are placed under `/app` inside the container.
+
+---
+
+## Install Dependencies
+
+```dockerfile
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+```
+
+The requirements file is copied before the rest of the source code.
+
+---
+
+## Copy Application
+
+```dockerfile
+COPY . .
+```
+
+Copies the application source files and other files into the container.
+
+---
+
+## Expose Port
+
+```dockerfile
+EXPOSE 8501
+```
+
+Documents that the Streamlit service listens on port `8501`.
+
+---
+
+## Start Application
+
+```dockerfile
+CMD [
+  "streamlit",
+  "run",
+  "app.py",
+  "--server.port=8501",
+  "--server.address=0.0.0.0"
+]
+```
+
+Binding to `0.0.0.0` is important when running dashboard inside Docker because it allows connections from outside the container.
+
+
+# 🗃 Expected Data Fields
+The dashboard expects the API Gateway's customer endpoint to return customer records containing fields used by the analytics.
+
+Important fields include:
+| Field | Purpose |
+|---|---|
+| `churn_value` | Numeric churn indicator |
+| `churn_label` | Churned/retained label |
+| `cltv` | Customer Lifetime Value |
+| `tenure_in_months` | Customer tenure |
+| `monthly_charge` | Monthly customer charge |
+| `total_charges` | Total customer charges |
+| `age` | Customer age |
+| `number_of_referrals` | Number of customer referrals |
+| `contract` | Contract type |
+| `payment_method` | Payment method |
+| `internet_type` | Internet service type |
+| `paperless_billing` | Paperless billing status |
+| `phone_service` | Phone service status |
+| `multiple_lines` | Multiple-line status |
+| `internet_service` | Internet service status |
+| `online_security` | Online security status |
+| `online_backup` | Online backup status |
+| `gender` | Customer gender |
+| `senior_citizen` | Senior citizen indicator |
+| `dependents` | Dependent status |
+The application performs column-existence checks before rendering individual visualizations, allowing charts to display a fallback message if their required fields are unavailable.
+
+
+---
+
+#Error Handling
+
+## Database/API Loading Error
+
+If customer data cannot be retrieved, the Overview tab displays an error indicating that the data could not be loaded from the database/API layer.
+
+The underlying exception is also included to assist debugging.
+
+---
+
+## HTTP Errors
+
+The data-access layer calls:
+
+```python
+response.raise_for_status()
+```
+Therefore, HTTP `4xx` and `5xx` responses are treated as errors.
+
+---
+
+##Connection Errors
+
+Network/request failures are caught and re-raised for customer-data loading.
+
+For inference logs, request failures instead result in an empty DataFrame.
+
+---
+
+
+#Performance Considerations
+
+The dashboard loads the complete customer dataset through the API Gateway.
+
+The data is then processed locally inside the Streamlit container.
+
+For relatively small or medium-sized datasets, this approach is straightforward and suitable for interactive analytics.
+
+For significantly larger datasets, these features canbe added:
+- Server-side filtering
+- Aggregation at the API/database layer
+- Query-specific endpoints
+- Database indexes
+- Incremental data loading
+- More granular caching
+
+This reduces the amount of data transferred from the database service to the dashboard.
+
+---
+
+# Limitations
+
+## Session-Based Data Versioning
+Data versions are stored in:
+```python
+st.session_state
+```
+Versions are associated with the current session rather than being permanently persisted.
+Restarting the application/container will remove the session's version history.
+
+---
+
+## Saved Charts Are Session-Based
+
+Custom charts are also stored in Streamlit session state.
+
+Therefore, saved charts are not currently persisted to a database or external storage.
+
+Restarting the service will clear them.
+
+---
+
+
+## Complete Dataset Retrieval
+
+The customer endpoint retrieves the entire combined customer dataset:
+
+```text
+/database/customers/full
+```
+
+This becomes inefficient for very large datasets.
+---
+
+The service is designed to run on **port 8501** and can be started locally with Streamlit or deployed as a Docker container.
