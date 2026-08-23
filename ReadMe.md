@@ -8,6 +8,7 @@ An end-to-end AI pipeline designed to predict customer churn in real time. Built
 - Ability to retrain Model: Ability to retrain and update the model with new data ingested.
 
 Repo Directory Structure
+```text
 AslamNo1Fan
 ├── data
 │   ├── generate_test_data
@@ -107,7 +108,7 @@ AslamNo1Fan
 ├── k8s_setup.sh
 ├── nginx.conf
 └── ReadMe.md
-
+```
 
 
 ## Application Setup & Management Guide
