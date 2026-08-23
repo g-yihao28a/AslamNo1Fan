@@ -37,17 +37,3 @@ def load_customer_data():
     payload = response.json()
     return pd.DataFrame(payload.get("customers", []))
 
-
-@st.cache_data(ttl=30)
-def load_inference_logs(limit=200):
-    try:
-        response = requests.get(
-            f"{GATEWAY_URL}/database/logs",
-            params={"limit": limit},
-            timeout=10,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        return pd.DataFrame(payload.get("logs", []))
-    except requests.RequestException:
-        return pd.DataFrame()
