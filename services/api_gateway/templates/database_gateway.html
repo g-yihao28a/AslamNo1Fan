@@ -15,7 +15,7 @@
     </header>
 
     <div class="space-y-6">
-      <!-- 1. Unified Search (Combo Input + Datalist Dropdown) -->
+      <!-- Search Function -->
       <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
         <div class="border-b border-slate-800 pb-3">
           <h2 class="text-base font-semibold text-emerald-400">View Customer Record</h2>
@@ -48,11 +48,11 @@
         <div id="searchResult" class="hidden text-xs p-4 rounded-xl bg-slate-950 border border-slate-800 text-left font-mono"></div>
       </section>
 
-      <!-- 2. Single Record Entry Form -->
+      <!-- Single Record Entry Form -->
       <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
         <div class="border-b border-slate-800 pb-3">
           <h2 class="text-base font-semibold text-emerald-400">Single Customer Entry</h2>
-          <p class="text-xs text-slate-400">Insert complete record to <code>/database/customers</code></p>
+          <p class="text-xs text-slate-400">Insert customer record to database</p>
         </div>
 
         <form id="singleCustomerForm" class="space-y-6 text-left">
@@ -77,8 +77,8 @@
                 <input type="number" id="age" min="1" max="120" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
               </div>
               <div>
-                <label for="under_18" class="block text-xs text-slate-300 mb-1">under_18</label>
-                <select id="under_18" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <label for="under_30" class="block text-xs text-slate-300 mb-1">under_30</label>
+                <select id="under_30" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                   <option value="No">No</option>
                   <option value="Yes">Yes</option>
                 </select>
@@ -321,11 +321,11 @@
         </form>
       </section>
 
-      <!-- 3. Bulk File Upload -->
+      <!-- CSV File Upload -->
       <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
         <div class="border-b border-slate-800 pb-3">
-          <h2 class="text-base font-semibold text-emerald-400">Bulk File Upload</h2>
-          <p class="text-xs text-slate-400">Upload multiple rows via <code>.csv</code></p>
+          <h2 class="text-base font-semibold text-emerald-400">CSV File Upload</h2>
+          <p class="text-xs text-slate-400">Upload multiple rows via .csv file</p>
         </div>
 
         <form id="bulkUploadForm" class="space-y-4">
@@ -449,14 +449,14 @@
       }
     });
 
-    // 1. Handle Form Submit
+    // Search form submit
     document.getElementById('searchForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const customerId = document.getElementById('search_customer_id').value.trim();
       executeCustomerSearch(customerId);
     });
 
-    // 2. Insert Single Record Matching Schema Types
+    // Insert Single Record Matching Schema Types
     document.getElementById('singleCustomerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const feedback = document.getElementById('singleFeedback');
@@ -499,7 +499,7 @@
         tech_support: document.getElementById('tech_support').value,
         tenure_in_months: parseInt(document.getElementById('tenure_in_months').value, 10),
         total_charges: document.getElementById('total_charges').value.trim(),
-        under_18: document.getElementById('under_18').value,
+        under_30: document.getElementById('under_30').value,
         zip_code: document.getElementById('zip_code').value.trim()
       };
 
@@ -525,13 +525,14 @@
       }
     });
 
-    // 3. Bulk Upload File
+    // Bulk Upload File
     document.getElementById('bulkUploadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const feedback = document.getElementById('bulkFeedback');
       const submitBtn = e.target.querySelector('button[type="submit"]');
       const fileInput = document.getElementById('bulkFile');
 
+      // return if no file
       if (!fileInput.files[0]) return;
 
       submitBtn.disabled = true;
@@ -540,6 +541,7 @@
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
 
+      // upload
       try {
         const res = await fetch('/database/customers/upload', {
           method: 'POST',
@@ -547,6 +549,7 @@
         });
         const data = await res.json();
 
+        // if error
         if (!res.ok) throw new Error(data.error || 'Bulk upload failed');
 
         feedback.className = 'text-xs p-3 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300';
@@ -564,7 +567,7 @@
       }
     });
 
-    // Initialize datalist options on page load
+    // Initialise datalist options on page load
     window.addEventListener('DOMContentLoaded', loadCustomerDatalist);
   </script>
 </body>

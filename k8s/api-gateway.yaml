@@ -1,0 +1,72 @@
+# Deployment
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: api-gateway-deployment     
+  namespace: default
+  labels:
+    app: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+
+  # Pod template
+  template:
+    metadata:
+      labels:
+        app: api-gateway # Label for pods
+    spec:
+      containers:
+      - name: api-gateway-container
+        image: nigelnakajima/api_gateway:v1
+        imagePullPolicy: IfNotPresent
+        # Environment variables passed to application
+        envFrom:
+        - configMapRef:
+            name: config
+
+        # Resource allocation limits (prevents one service from crashing the node)
+        resources:
+          requests:                # Minimum guaranteed resources
+            cpu: "100m"            # 100 millicores (0.1 CPU core)
+            memory: "128Mi"
+          limits:                  # Maximum allowed resources before throttling/restart
+            cpu: "500m"            # 500 millicores (0.5 CPU core)
+            memory: "512Mi"
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway-service                # DNS name used by other microservices to call this app
+  namespace: default
+spec:
+  type: ClusterIP                  # Internal-only network access (Use 'NodePort' for Minikube testing)
+  selector:
+    app: api-gateway                # Routes incoming traffic to pods matching this label
+  ports:
+  - protocol: TCP
+    port: 8008                     # Port other services call internally
+    targetPort: 8008               # Port your application listens on
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway-deployment
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70   # Target average CPU at 70%

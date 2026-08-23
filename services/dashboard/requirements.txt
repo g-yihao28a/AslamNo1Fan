@@ -1,5 +1,7 @@
 streamlit
 pandas
+numpy
 plotly
 requests
 flask
+python-dotenv

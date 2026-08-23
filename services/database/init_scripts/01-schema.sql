@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS customers (
     -- demographics
     gender VARCHAR(10),
     age INT,
-    under_18 VARCHAR(5),
+    under_30 VARCHAR(5),
     senior_citizen VARCHAR(5),
     partner VARCHAR(5),
     dependents VARCHAR(5),
