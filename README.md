@@ -307,7 +307,7 @@ Deletes all Kubernetes resources within the cluster for a clean reinstall
 
 ```mermaid
 %%{init: {
-  'theme': 'base',
+  'theme': 'dark',
   'themeVariables': {
     'fontFamily': 'arial',
     'fontSize': '14px'
