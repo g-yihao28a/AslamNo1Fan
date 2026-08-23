@@ -290,16 +290,6 @@ If customer data cannot be retrieved, the Overview tab displays an error indicat
 
 The underlying exception is also included to assist debugging.
 
----
-
-## HTTP Errors
-
-The data-access layer calls:
-
-```python
-response.raise_for_status()
-```
-Therefore, HTTP `4xx` and `5xx` responses are treated as errors.
 
 ---
 
